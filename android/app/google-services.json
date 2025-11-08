@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "664546609726",
+    "project_id": "jewelstack-cc698",
+    "storage_bucket": "jewelstack-cc698.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:664546609726:android:0e3b54dac15e69c8d85f6f",
+        "android_client_info": {
+          "package_name": "com.example.jewelstack"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUXN-XMfPWVUXTJcgESlZyRaKyaF9Umnc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
