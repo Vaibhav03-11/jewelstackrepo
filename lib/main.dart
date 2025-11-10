@@ -4,12 +4,14 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:jewelstack/core/constants/colors.dart';
 import 'package:jewelstack/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:jewelstack/features/auth/presentation/pages/login_page.dart';
-import 'package:jewelstack/features/auth/presentation/pages/main_dashboard.dart';
+import 'package:jewelstack/features/auth/presentation/pages/main_dashboard.dart' as auth_dashboard;
 import 'package:jewelstack/features/auth/presentation/pages/register_page.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'core/themes/app_theme.dart';
 import 'features/auth/application/auth_service.dart';
+import 'features/inventory/application/inventory_provider.dart';
+import 'features/dashboard/presentation/pages/main_dashboard.dart' as dashboard;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,13 +26,17 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        //Provider<AuthService>(create: (_) => AuthService()),
         Provider<AuthService>(create: (_) => AuthService()),
+        ChangeNotifierProvider<InventoryProvider>(
+          create: (_) => InventoryProvider(),
+        ),
       ],
       child: MaterialApp(
         title: 'JewelStack',
         theme: AppTheme.lightTheme,
         debugShowCheckedModeBanner: false,
-        home: AuthWrapper(),
+        home: AuthenticationFlow(),
       ),
     );
   }
@@ -50,11 +56,11 @@ class AuthWrapper extends StatelessWidget {
 
         if (snapshot.hasData && snapshot.data != null) {
           // User is logged in - navigate to main dashboard
-          return MainDashboard();
+          return dashboard.MainDashboard();
         }
 
         // User is not logged in - show authentication flow
-        return AuthenticationFlow();
+        return LoginPage();
       },
     );
   }
@@ -97,7 +103,7 @@ class AuthenticationFlow extends StatefulWidget {
 class _AuthenticationFlowState extends State<AuthenticationFlow> {
   PageController _pageController = PageController();
   int _currentPage = 0;
-
+  
   void _navigateToPage(int page) {
     _pageController.animateToPage(
       page,
@@ -109,9 +115,22 @@ class _AuthenticationFlowState extends State<AuthenticationFlow> {
 
   @override
   Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context);
+
     return Scaffold(
       backgroundColor: AppColors.lightBackground,
-      body: PageView(
+      body:
+      StreamBuilder(stream: authService.authStateChanges, builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return SplashScreen();
+        }
+
+        if (snapshot.hasData && snapshot.data != null) {
+          // User is logged in - navigate to main dashboard
+          return dashboard.MainDashboard();
+        }
+
+        return PageView(
         controller: _pageController,
         physics: NeverScrollableScrollPhysics(),
         children: [
@@ -126,7 +145,9 @@ class _AuthenticationFlowState extends State<AuthenticationFlow> {
             onBackPressed: () => _navigateToPage(0),
           ),
         ],
-      ),
+      );
+      },)
+       ,
     );
   }
 

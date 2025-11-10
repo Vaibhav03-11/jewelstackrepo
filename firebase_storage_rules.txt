@@ -1,0 +1,15 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow read/write for authenticated users only
+    match /inventory/{itemId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow read for public (if you want images publicly accessible)
+    match /inventory/{itemId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
