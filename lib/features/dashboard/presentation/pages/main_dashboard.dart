@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../auth/application/auth_service.dart';
 import '../../../inventory/presentation/pages/inventory_list_page.dart';
 import '../../../../core/constants/colors.dart';
+import '../../../orders/presentation/pages/order_list_page.dart';
+import '../../../orders/presentation/pages/customer_list_page.dart';
 
 class MainDashboard extends StatelessWidget {
   @override
@@ -82,6 +84,10 @@ class MainDashboard extends StatelessWidget {
                   color: AppColors.secondaryGold,
                   onTap: () {
                     // TODO: Navigate to customers
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder:(context)=>CustomerListPage()),
+                    );
                   },
                 ),
                 _buildDashboardCard(
@@ -90,6 +96,10 @@ class MainDashboard extends StatelessWidget {
                   color: AppColors.accentGold,
                   onTap: () {
                     // TODO: Navigate to orders
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder:(context)=>OrderListPage()),
+                    );
                   },
                 ),
                 _buildDashboardCard(
@@ -98,6 +108,12 @@ class MainDashboard extends StatelessWidget {
                   color: AppColors.success,
                   onTap: () {
                     // TODO: Navigate to ML insights
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('ML Insights module coming soon!'),
+                        backgroundColor: AppColors.primaryGold,
+                      ),
+                    );
                   },
                 ),
               ],

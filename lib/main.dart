@@ -12,6 +12,7 @@ import 'core/themes/app_theme.dart';
 import 'features/auth/application/auth_service.dart';
 import 'features/inventory/application/inventory_provider.dart';
 import 'features/dashboard/presentation/pages/main_dashboard.dart' as dashboard;
+import 'features/orders/application/order_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,6 +31,9 @@ class MyApp extends StatelessWidget {
         Provider<AuthService>(create: (_) => AuthService()),
         ChangeNotifierProvider<InventoryProvider>(
           create: (_) => InventoryProvider(),
+        ),
+        ChangeNotifierProvider<OrderProvider>(
+          create: (_) => OrderProvider(),
         ),
       ],
       child: MaterialApp(

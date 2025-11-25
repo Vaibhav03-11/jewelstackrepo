@@ -110,7 +110,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         return 'Please enter a valid email address';
                       }
                       return null;
-                    },
+                    }, onChanged: (value) {  }, readOnly: false, onTap: () {  },
                   ),
                   SizedBox(height: 30),
 

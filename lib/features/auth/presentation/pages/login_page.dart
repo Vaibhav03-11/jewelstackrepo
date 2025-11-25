@@ -101,7 +101,7 @@ class _LoginPageState extends State<LoginPage> {
                       return 'Please enter your email or phone number';
                     }
                     return null;
-                  },
+                  }, onChanged: (value) {  }, readOnly: false, onTap: () {  },
                 ),
                 SizedBox(height: 20),
 
@@ -128,7 +128,7 @@ class _LoginPageState extends State<LoginPage> {
                     onPressed: () {
                       setState(() => _obscurePassword = !_obscurePassword);
                     },
-                  ),
+                  ), onChanged: (value) {  }, readOnly: false, onTap: () {  },
                 ),
                 SizedBox(height: 16),
 

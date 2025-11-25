@@ -198,7 +198,7 @@ Future<void> _saveItem() async {
                       return 'Please enter item name';
                     }
                     return null;
-                  },
+                  }, onChanged: (value) {  }, onTap: () {  },
                 ),
                 SizedBox(height: 20),
 

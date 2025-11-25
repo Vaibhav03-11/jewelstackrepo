@@ -122,7 +122,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       return 'Please enter your full name';
                     }
                     return null;
-                  },
+                  }, onChanged: (value) {  }, readOnly: false, onTap: () {  },
                 ),
                 SizedBox(height: 20),
 
@@ -140,7 +140,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       return 'Please enter a valid email or phone number';
                     }
                     return null;
-                  },
+                  }, onChanged: (value) {  }, readOnly: false, onTap: () {  },
                 ),
                 SizedBox(height: 20),
 
@@ -150,6 +150,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   hintText: 'Enter your phone number',
                   keyboardType: TextInputType.phone,
                   controller: _phoneController,
+                  onChanged: (value) {  }, readOnly: false, onTap: () {  },
                 ),
                 SizedBox(height: 20),
 
@@ -176,7 +177,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     onPressed: () {
                       setState(() => _obscurePassword = !_obscurePassword);
                     },
-                  ),
+                  ), onChanged: (value) {  }, readOnly: false, onTap: () {  },
                 ),
                 SizedBox(height: 20),
 
@@ -203,7 +204,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     onPressed: () {
                       setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
                     },
-                  ),
+                  ), onChanged: (value) {  }, readOnly: false, onTap: () {  },
                 ),
                 SizedBox(height: 20),
 
