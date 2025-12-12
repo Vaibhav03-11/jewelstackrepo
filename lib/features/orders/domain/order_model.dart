@@ -15,6 +15,8 @@ class Order {
   final DateTime estimatedDelivery;
   final DateTime? actualDelivery;
   final String? description;
+  final bool isDueSoon;
+  final bool isInProcess;
   final List<OrderProgress> progressUpdates; // NEW: Progress tracking
 
   Order({
@@ -34,9 +36,11 @@ class Order {
     required this.estimatedDelivery,
     this.actualDelivery,
     this.description,
-    required this.progressUpdates, // NEW
+    required this.progressUpdates, 
+    
+    this.isDueSoon=false, // NEW
+    this.isInProcess=false, // NEW
   });
-
   // Get current progress percentage
   double get progressPercentage {
     switch (status) {
@@ -87,16 +91,18 @@ class Order {
   }
 
   factory Order.fromMap(Map<String, dynamic> map) {
+    print("Sameeranss ${map}");
     return Order(
       id: map['id'] ?? '',
       customerId: map['customerId'] ?? '',
       customerName: map['customerName'] ?? '',
       customerContact: map['customerContact'] ?? '',
-      items: List<OrderItem>.from(
-          (map['items'] ?? []).map((x) => OrderItem.fromMap(x))),
+      // items: List<OrderItem>.from(
+      //     (map['items'] ?? []).map((x) => OrderItem.fromMap(x))),
+      items: [],
       materialType: map['materialType'] ?? '',
       goldRate: (map['goldRate'] ?? 0.0).toDouble(),
-      totalWeight: (map['totalWeight'] ?? 0.0).toDouble(),
+      totalWeight: 0.0,
       totalAmount: (map['totalAmount'] ?? 0.0).toDouble(),
       advancePayment: (map['advancePayment'] ?? 0.0).toDouble(),
       balanceDue: (map['balanceDue'] ?? 0.0).toDouble(),
@@ -104,15 +110,27 @@ class Order {
         (e) => e.toString().split('.').last == map['status'],
         orElse: () => OrderStatus.pending,
       ),
-      orderDate: DateTime.fromMillisecondsSinceEpoch(map['orderDate']),
-      estimatedDelivery: DateTime.fromMillisecondsSinceEpoch(map['estimatedDelivery']),
+      orderDate: _parseDateTime(map['orderDate']),
+      estimatedDelivery: _parseDateTime(map['estimatedDelivery']),
       actualDelivery: map['actualDelivery'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(map['actualDelivery'])
-          : null,
-      description: map['description'],
+          ? _parseDateTime(map['actualDelivery'])
+          : DateTime.now(),
+      description: map['description']??"",
       progressUpdates: List<OrderProgress>.from( // NEW
           (map['progressUpdates'] ?? []).map((x) => OrderProgress.fromMap(x))),
     );
+  }
+
+  // Helper to safely parse Firestore timestamps
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+    if (value is double) return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+    // Handle Firestore Timestamp objects
+    if (value.runtimeType.toString().contains('Timestamp')) {
+      return (value as dynamic).toDate();
+    }
+    return DateTime.now();
   }
 
   Order copyWith({
@@ -190,9 +208,21 @@ class OrderProgress {
         orElse: () => OrderStatus.pending,
       ),
       description: map['description'] ?? '',
-      timestamp: DateTime.fromMillisecondsSinceEpoch(map['timestamp']),
+      timestamp: _parseDateTime(map['timestamp']),
       updatedBy: map['updatedBy'],
     );
+  }
+
+  // Helper to safely parse Firestore timestamps
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+    if (value is double) return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+    // Handle Firestore Timestamp objects
+    if (value.runtimeType.toString().contains('Timestamp')) {
+      return (value as dynamic).toDate();
+    }
+    return DateTime.now();
   }
 }
 
@@ -247,7 +277,8 @@ class OrderItem {
       weight: (map['weight'] ?? 0.0).toDouble(),
       unitPrice: (map['unitPrice'] ?? 0.0).toDouble(),
       totalPrice: (map['totalPrice'] ?? 0.0).toDouble(),
-      description: map['description'], type: '',
+      description: map['description']??"", 
+      type: '',
     );
   }
 

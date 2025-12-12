@@ -75,27 +75,26 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
     
     return goldValue + makingCharges;
   }
+Future<void> _createOrder() async {
+  if (!_formKey.currentState!.validate()) return;
+  if (_selectedCustomer == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Please select a customer'),
+        backgroundColor: AppColors.error,
+      ),
+    );
+    return;
+  }
 
-  Future<void> _createOrder() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedCustomer == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please select a customer'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-      return;
-    }
+  setState(() => _isLoading = true);
 
-    setState(() => _isLoading = true);
+  try {
+    final totalAmount = _calculateTotal();
+    final advancePayment = double.tryParse(_advancePaymentController.text) ?? 0.0;
+    final balanceDue = totalAmount - advancePayment;
 
-    try {
-      final totalAmount = _calculateTotal();
-      final advancePayment = double.tryParse(_advancePaymentController.text) ?? 0.0;
-      final balanceDue = totalAmount - advancePayment;
-
-       // Create initial progress update
+    // Create initial progress update
     final initialProgress = OrderProgress(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       status: OrderStatus.pending,
@@ -104,61 +103,56 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       updatedBy: 'System',
     );
 
-      final itemWeight = double.tryParse(_weightController.text) ?? 0.0;
-      final itemTotal = totalAmount;
-      final itemUnitPrice = itemWeight > 0 ? itemTotal / itemWeight : itemTotal;
-
-      final order = Order(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        customerId: _selectedCustomer!.id,
-        customerName: _selectedCustomer!.name,
-        customerContact: _selectedCustomer!.contactNumber,
-        items: [
-          OrderItem(
-            name: '$_selectedItemType - $_selectedMaterial',
-            type: _selectedItemType,
-            weight: itemWeight,
-            description: _descriptionController.text,
-            id: '',
-            quantity: 1,
-            unitPrice: itemUnitPrice,
-            totalPrice: itemTotal,
-          ),
-        ],
-        materialType: _selectedMaterial,
-        goldRate: Provider.of<OrderProvider>(context, listen: false).liveGoldRate,
-        totalWeight: itemWeight,
-        totalAmount: totalAmount,
-        advancePayment: advancePayment,
-        balanceDue: balanceDue,
-        status: OrderStatus.pending,
-        orderDate: DateTime.now(),
-        estimatedDelivery: _selectedDeliveryDate,
-        description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
-        progressUpdates: [initialProgress],
-      );
-
-      await Provider.of<OrderProvider>(context, listen: false).createOrder(order);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Order created successfully'),
-          backgroundColor: AppColors.success,
+    final order = Order(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      customerId: _selectedCustomer!.id,
+      customerName: _selectedCustomer!.name,
+      customerContact: _selectedCustomer!.contactNumber,
+      items: [
+        OrderItem(
+          name: '$_selectedItemType - $_selectedMaterial',
+          type: _selectedItemType,
+          weight: double.parse(_weightController.text),
+          description: _descriptionController.text, id: '', quantity: 0, unitPrice: 0.0, totalPrice: 0.0,
         ),
-      );
-      
-      Navigator.pop(context);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to create order: $e'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
+      ],
+      materialType: _selectedMaterial,
+      goldRate: Provider.of<OrderProvider>(context, listen: false).liveGoldRate,
+      totalWeight: double.parse(_weightController.text),
+      totalAmount: totalAmount,
+      advancePayment: advancePayment,
+      balanceDue: balanceDue,
+      status: OrderStatus.pending,
+      orderDate: DateTime.now(),
+      estimatedDelivery: _selectedDeliveryDate,
+      description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
+      progressUpdates: [initialProgress],
+    );
+
+    await Provider.of<OrderProvider>(context, listen: false).createOrder(order);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Order created successfully'),
+        backgroundColor: AppColors.success,
+      ),
+    );
+    
+    // Optional: Add a small delay to ensure Firestore updates
+    await Future.delayed(Duration(milliseconds: 500));
+    
+    Navigator.pop(context);
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to create order: $e'),
+        backgroundColor: AppColors.error,
+      ),
+    );
+  } finally {
+    setState(() => _isLoading = false);
   }
+}
 
   Future<void> _selectDeliveryDate() async {
     final DateTime? picked = await showDatePicker(

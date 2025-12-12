@@ -1,32 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../application/order_provider.dart';
-import '../../application/invoice_service.dart';
-import '../../domain/order_model.dart';
+import '../../domain/order_model.dart' as order_model;
 import '../../../../core/constants/colors.dart';
 import '../../../../core/widgets/custom_textfield.dart';
 import '../widgets/order_reminder_widget.dart';
 import '../widgets/order_in_process_widget.dart';
 import 'order_detail_page.dart';
 import 'create_order_page.dart';
-
-extension OrderExtensions on Order {
-  // Returns true if the estimated delivery is within the next 2 days and the order is not completed or cancelled.
-  bool get isDueSoon {
-    final now = DateTime.now();
-    try {
-      final daysUntil = estimatedDelivery.difference(now).inDays;
-      return daysUntil >= 0 && daysUntil <= 2 && status != OrderStatus.delivered && status != OrderStatus.cancelled;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  // Convenience helper used by the UI to display quick action buttons.
-  bool get isInProcess {
-    return status == OrderStatus.inProgress || status == OrderStatus.confirmed;
-  }
-}
 
 class OrderListPage extends StatefulWidget {
   const OrderListPage({Key? key}) : super(key: key);
@@ -37,7 +19,6 @@ class OrderListPage extends StatefulWidget {
 
 class _OrderListPageState extends State<OrderListPage> {
   final TextEditingController _searchController = TextEditingController();
-  final InvoiceService _invoiceService = InvoiceService();
   String _selectedFilter = 'All';
   bool _showDashboardWidgets = true;
 
@@ -83,8 +64,8 @@ class _OrderListPageState extends State<OrderListPage> {
             _buildSearchFilter(),
             // Dashboard Widgets (Conditional)
             if (_showDashboardWidgets) _buildDashboardWidgets(),
-            // Order List
-            _buildOrderList(),
+            // Order List using StreamBuilder
+            _buildOrderListStream(),
           ],
         ),
       ),
@@ -112,7 +93,9 @@ class _OrderListPageState extends State<OrderListPage> {
             hintText: 'Search by customer name or order ID',
             controller: _searchController,
             onChanged: (value) {
-              Provider.of<OrderProvider>(context, listen: false).searchOrders(value);
+              setState(() {
+                // Trigger rebuild for search
+              });
             },
           ),
           SizedBox(height: 12),
@@ -157,14 +140,39 @@ class _OrderListPageState extends State<OrderListPage> {
   }
 
   Widget _buildDashboardWidgets() {
-    return Consumer<OrderProvider>(
-      builder: (context, provider, child) {
+    return StreamBuilder(
+      stream: FirebaseFirestore.instance.collection("orders").snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                _buildShimmerCard(),
+                SizedBox(height: 16),
+                _buildShimmerCard(),
+              ],
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text('Error loading orders: ${snapshot.error}'),
+          );
+        }
+
+        final orders = snapshot.data ?? [];
+        final dueSoonOrders = [];
+        final inProcessOrders = [];
+
         return Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Column(
             children: [
               OrderReminderWidget(
-                dueSoonOrders: provider.dueSoonOrders,
+                dueSoonOrders: [],
                 onViewAll: () {
                   setState(() {
                     _selectedFilter = 'Due Soon';
@@ -173,7 +181,7 @@ class _OrderListPageState extends State<OrderListPage> {
               ),
               SizedBox(height: 16),
               OrderInProcessWidget(
-                inProcessOrders: provider.inProcessOrders,
+                inProcessOrders: [],
                 onViewAll: () {
                   setState(() {
                     _selectedFilter = 'In Progress';
@@ -188,34 +196,90 @@ class _OrderListPageState extends State<OrderListPage> {
     );
   }
 
-  Widget _buildOrderList() {
+  Widget _buildOrderListStream() {
     return Expanded(
-      child: Consumer<OrderProvider>(
-        builder: (context, provider, child) {
-          List<Order> displayedOrders = _filterOrders(provider.filteredOrders);
+      child: StreamBuilder(
+        stream: FirebaseFirestore.instance
+            .collection('orders')
+            .orderBy('orderDate', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+ 
+          // Handle loading state
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator()
+            );
+          }
 
-          if (provider.isLoading && displayedOrders.isEmpty) {
+          // Handle error state
+          if (snapshot.hasError) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
+                  Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: AppColors.error,
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'Loading orders...',
+                    'Error loading orders',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontSize: 16,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '${snapshot.error}',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: 'Roboto',
                       color: AppColors.textSecondary,
                     ),
                   ),
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      Provider.of<OrderProvider>(context, listen: false).initialize();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGold,
+                    ),
+                    child: Text('Retry'),
+                  ),
                 ],
               ),
             );
           }
+List<order_model.Order> allOrders=[];
+try {
+  
+          // Map Firestore documents to Order objects
+          allOrders = snapshot.data?.docs
+              .map((doc) => order_model.Order.fromMap(doc.data() as Map<String, dynamic>))
+              .toList() ?? [];
+                     print("Sameerana ${allOrders}");
+} catch (e) {
+  print("Sameerana S Error ${e.toString()}");
+}
+          
+          // Apply search filter
+          List<order_model.Order> filteredOrders = allOrders;
+          if (_searchController.text.isNotEmpty) {
+            filteredOrders = allOrders.where((order) =>
+                order.customerName.toLowerCase().contains(_searchController.text.toLowerCase()) ||
+                order.id.contains(_searchController.text)).toList();
+          }
 
-          if (displayedOrders.isEmpty) {
+          // Apply status filter
+          filteredOrders = _filterOrders(filteredOrders);
+
+          // Handle empty state
+          if (filteredOrders.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -236,11 +300,12 @@ class _OrderListPageState extends State<OrderListPage> {
                     textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 8),
-                  if (_selectedFilter != 'All')
+                  if (_selectedFilter != 'All' || _searchController.text.isNotEmpty)
                     TextButton(
                       onPressed: () {
                         setState(() {
                           _selectedFilter = 'All';
+                          _searchController.clear();
                         });
                       },
                       child: Text('Show All Orders'),
@@ -250,30 +315,37 @@ class _OrderListPageState extends State<OrderListPage> {
             );
           }
 
-          return ListView.builder(
-            itemCount: displayedOrders.length,
-            itemBuilder: (context, index) {
-              final order = displayedOrders[index];
-              return _buildOrderCard(order);
+          // Display orders list
+          return RefreshIndicator(
+            onRefresh: () async {
+              // Force refresh by re-initializing
+              Provider.of<OrderProvider>(context, listen: false).initialize();
             },
+            child: ListView.builder(
+              itemCount: filteredOrders.length,
+              itemBuilder: (context, index) {
+                final order = filteredOrders[index];
+                return _buildOrderCard(order);
+              },
+            ),
           );
         },
       ),
     );
   }
 
-  List<Order> _filterOrders(List<Order> orders) {
+  List<order_model.Order> _filterOrders(List<order_model.Order> orders) {
     switch (_selectedFilter) {
       case 'Pending':
-        return orders.where((order) => order.status == OrderStatus.pending).toList();
+        return orders.where((order) => order.status == order_model.OrderStatus.pending).toList();
       case 'Confirmed':
-        return orders.where((order) => order.status == OrderStatus.confirmed).toList();
+        return orders.where((order) => order.status == order_model.OrderStatus.confirmed).toList();
       case 'In Progress':
-        return orders.where((order) => order.status == OrderStatus.inProgress).toList();
+        return orders.where((order) => order.status == order_model.OrderStatus.inProgress).toList();
       case 'Ready':
-        return orders.where((order) => order.status == OrderStatus.ready).toList();
+        return orders.where((order) => order.status == order_model.OrderStatus.ready).toList();
       case 'Delivered':
-        return orders.where((order) => order.status == OrderStatus.delivered).toList();
+        return orders.where((order) => order.status == order_model.OrderStatus.delivered).toList();
       case 'Due Soon':
         return orders.where((order) => order.isDueSoon).toList();
       case 'All':
@@ -283,6 +355,10 @@ class _OrderListPageState extends State<OrderListPage> {
   }
 
   String _getEmptyStateMessage() {
+    if (_searchController.text.isNotEmpty) {
+      return 'No orders found for "${_searchController.text}"';
+    }
+    
     switch (_selectedFilter) {
       case 'Pending':
         return 'No pending orders';
@@ -298,36 +374,36 @@ class _OrderListPageState extends State<OrderListPage> {
         return 'No orders due soon';
       case 'All':
       default:
-        return 'No orders found';
+        return 'No orders found\nCreate your first order using the + button';
     }
   }
 
-  Widget _buildOrderCard(Order order) {
+  Widget _buildOrderCard(order_model.Order order) {
     Color statusColor;
     String statusText;
     
     switch (order.status) {
-      case OrderStatus.pending:
+      case order_model.OrderStatus.pending:
         statusColor = AppColors.warning;
         statusText = 'Pending';
         break;
-      case OrderStatus.confirmed:
+      case order_model.OrderStatus.confirmed:
         statusColor = AppColors.primaryGold;
         statusText = 'Confirmed';
         break;
-      case OrderStatus.inProgress:
+      case order_model.OrderStatus.inProgress:
         statusColor = Colors.blue;
         statusText = 'In Progress';
         break;
-      case OrderStatus.ready:
+      case order_model.OrderStatus.ready:
         statusColor = Colors.orange;
         statusText = 'Ready';
         break;
-      case OrderStatus.delivered:
+      case order_model.OrderStatus.delivered:
         statusColor = AppColors.success;
         statusText = 'Delivered';
         break;
-      case OrderStatus.cancelled:
+      case order_model.OrderStatus.cancelled:
         statusColor = AppColors.error;
         statusText = 'Cancelled';
         break;
@@ -355,7 +431,7 @@ class _OrderListPageState extends State<OrderListPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Order #${order.id}',
+                      'Order #${order.id.substring(order.id.length - 6)}', // Show last 6 chars
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 16,
@@ -401,47 +477,7 @@ class _OrderListPageState extends State<OrderListPage> {
               ),
               SizedBox(height: 12),
               
-              // Progress Bar
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: LinearProgressIndicator(
-                          value: order.progressPercentage,
-                          backgroundColor: AppColors.borderColor,
-                          valueColor: AlwaysStoppedAnimation<Color>(statusColor),
-                          minHeight: 6,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        '${(order.progressPercentage * 100).toInt()}%',
-                        style: TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: statusColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    _getProgressText(order.status),
-                    style: TextStyle(
-                      fontFamily: 'Roboto',
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 12),
-              
-              // Order Details Row
+              // Order Details
               Row(
                 children: [
                   Expanded(
@@ -464,10 +500,10 @@ class _OrderListPageState extends State<OrderListPage> {
                         SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.inventory_2, size: 14, color: AppColors.textSecondary),
+                            Icon(Icons.scale, size: 14, color: AppColors.textSecondary),
                             SizedBox(width: 4),
                             Text(
-                              '${order.items.length} item${order.items.length > 1 ? 's' : ''}',
+                              '${order.totalWeight}g ${order.materialType}',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,
@@ -481,16 +517,16 @@ class _OrderListPageState extends State<OrderListPage> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      if (order.latestProgress != null) ...[
-                        Text(
-                          'Last update: ${_formatTimeAgo(order.latestProgress!.timestamp)}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textSecondary,
-                          ),
+                      Text(
+                        '₹${order.totalAmount.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryGold,
                         ),
-                        SizedBox(height: 4),
-                      ],
+                      ),
+                      SizedBox(height: 4),
                       Container(
                         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
@@ -511,7 +547,7 @@ class _OrderListPageState extends State<OrderListPage> {
                   ),
                 ],
               ),
-              SizedBox(height: 8),
+              SizedBox(height: 12),
               
               // Payment Summary
               Divider(),
@@ -540,128 +576,20 @@ class _OrderListPageState extends State<OrderListPage> {
                       ],
                     ),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        'Total',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
+                  if (order.status == order_model.OrderStatus.delivered)
+                    OutlinedButton(
+                      onPressed: () {
+                        // Generate invoice
+                      },
+                      child: Text('Invoice'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primaryGold,
+                        side: BorderSide(color: AppColors.primaryGold),
+                        padding: EdgeInsets.symmetric(horizontal: 16),
                       ),
-                      Text(
-                        '₹${order.totalAmount.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryGold,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
                 ],
               ),
-              
-              // Quick Action Buttons (for in-process orders)
-              if (order.isInProcess) ...[
-                SizedBox(height: 12),
-                Divider(),
-                SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          _quickUpdateStatus(order, OrderStatus.ready, 'Marked as ready for delivery');
-                        },
-                        icon: Icon(Icons.inventory_2, size: 16),
-                        label: Text('Mark Ready'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.orange,
-                          side: BorderSide(color: Colors.orange),
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          _quickUpdateStatus(order, OrderStatus.delivered, 'Order delivered to customer');
-                        },
-                        icon: Icon(Icons.local_shipping, size: 16),
-                        label: Text('Deliver'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.success,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-
-              // Invoice Quick Actions (for delivered orders)
-              if (order.status == OrderStatus.delivered) ...[
-                SizedBox(height: 12),
-                Divider(),
-                SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          _generateInvoice(order, 'pdf');
-                        },
-                        icon: Icon(Icons.picture_as_pdf, size: 16),
-                        label: Text('PDF Invoice'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.error,
-                          side: BorderSide(color: AppColors.error),
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          _generateInvoice(order, 'doc');
-                        },
-                        icon: Icon(Icons.description, size: 16),
-                        label: Text('DOC Invoice'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.blue,
-                          side: BorderSide(color: Colors.blue),
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          _emailInvoice(order);
-                        },
-                        icon: Icon(Icons.email, size: 16),
-                        label: Text('Email Invoice'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryGold,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
             ],
           ),
         ),
@@ -669,113 +597,42 @@ class _OrderListPageState extends State<OrderListPage> {
     );
   }
 
-  String _getProgressText(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.pending:
-        return 'Awaiting confirmation';
-      case OrderStatus.confirmed:
-        return 'Materials preparation';
-      case OrderStatus.inProgress:
-        return 'Crafting in progress';
-      case OrderStatus.ready:
-        return 'Ready for delivery';
-      case OrderStatus.delivered:
-        return 'Order completed';
-      case OrderStatus.cancelled:
-        return 'Order cancelled';
-    }
-  }
-
-  void _quickUpdateStatus(Order order, OrderStatus newStatus, String description) async {
-    try {
-      final provider = Provider.of<OrderProvider>(context, listen: false);
-      await provider.updateOrderStatusWithProgress(
-        orderId: order.id,
-        newStatus: newStatus,
-        progressDescription: description,
-        updatedBy: 'Staff',
-      );
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Order status updated to ${_getStatusText(newStatus)}'),
-          backgroundColor: AppColors.success,
+  Widget _buildShimmerCard() {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 20,
+                    width: 100,
+                    color: AppColors.borderColor,
+                  ),
+                ),
+                Container(
+                  height: 24,
+                  width: 80,
+                  color: AppColors.borderColor,
+                ),
+              ],
+            ),
+            SizedBox(height: 12),
+            Container(height: 16, width: 150, color: AppColors.borderColor),
+            SizedBox(height: 8),
+            Container(height: 14, width: 120, color: AppColors.borderColor),
+          ],
         ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to update order: $e'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    }
-  }
-
-  void _generateInvoice(Order order, String format) async {
-    try {
-      if (format == 'pdf') {
-        await _invoiceService.generatePdfInvoice(order, context);
-      } else {
-        await _invoiceService.generateDocInvoice(order, context);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to generate $format invoice: $e'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    }
-  }
-
-  void _emailInvoice(Order order) async {
-    try {
-      await _invoiceService.emailInvoice(order, context);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to email invoice: $e'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    }
-  }
-
-  String _getStatusText(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.pending:
-        return 'Pending';
-      case OrderStatus.confirmed:
-        return 'Confirmed';
-      case OrderStatus.inProgress:
-        return 'In Progress';
-      case OrderStatus.ready:
-        return 'Ready';
-      case OrderStatus.delivered:
-        return 'Delivered';
-      case OrderStatus.cancelled:
-        return 'Cancelled';
-    }
+      ),
+    );
   }
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
-  }
-
-  String _formatTimeAgo(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
-
-    if (difference.inDays > 0) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
-    } else {
-      return 'Just now';
-    }
   }
 
   @override

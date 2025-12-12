@@ -8,6 +8,7 @@ class OrderService {
 
   // Get all orders
   Stream<List<Order>> getOrders() {
+    print('🔥 Listening to orders collection...');
     return _ordersCollection
         .orderBy('orderDate', descending: true)
         .snapshots()

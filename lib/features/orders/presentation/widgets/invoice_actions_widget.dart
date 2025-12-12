@@ -55,13 +55,19 @@ class InvoiceActionsWidget extends StatelessWidget {
                   icon: Icons.description,
                   label: 'DOC Invoice',
                   color: Colors.blue,
-                  onPressed: () => invoiceService.generateDocInvoice(order, context),
+                  onPressed: () {
+                    
+                  },
+                  // onPressed: () => invoiceService.generateDocInvoice(order, context),
                 ),
                 _buildInvoiceButton(
                   icon: Icons.email,
                   label: 'Email Invoice',
                   color: AppColors.primaryGold,
-                  onPressed: () => invoiceService.emailInvoice(order, context),
+                  onPressed: () {
+                    
+                  },
+                  // onPressed: () => invoiceService.emailInvoice(order, context),
                 ),
               ],
             ),
