@@ -6,6 +6,9 @@ import 'package:jewelstack/features/auth/presentation/pages/forgot_password_page
 import 'package:jewelstack/features/auth/presentation/pages/login_page.dart';
 import 'package:jewelstack/features/auth/presentation/pages/main_dashboard.dart' as auth_dashboard;
 import 'package:jewelstack/features/auth/presentation/pages/register_page.dart';
+import 'package:jewelstack/features/orders/presentation/addgemstones.dart';
+import 'package:jewelstack/features/orders/presentation/addgolddetails.dart';
+import 'package:jewelstack/features/orders/presentation/addrudraksh.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'core/themes/app_theme.dart';
