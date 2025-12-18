@@ -1,7 +1,24 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../auth/application/auth_service.dart';
+
+// Color Palette
+class AppColors {
+  static const Color primaryGold = Color(0xFFD4AF37);
+  static const Color secondaryGold = Color(0xFFB8860B);
+  static const Color accentGold = Color(0xFFFFD700);
+  static const Color darkBackground = Color(0xFF1A1A1A);
+  static const Color lightBackground = Color(0xFFF8F8F8);
+  static const Color textPrimary = Color(0xFF333333);
+  static const Color textSecondary = Color(0xFF666666);
+  static const Color success = Color(0xFF4CAF50);
+  static const Color warning = Color(0xFFFF9800);
+  static const Color error = Color(0xFFF44336);
+  static const Color cardBackground = Color(0xFFFAF9F6);
+  static const Color borderColor = Color(0xFFE8E6E1);
+}
 
 class DetailsPage extends StatefulWidget {
   const DetailsPage({super.key});
@@ -20,85 +37,54 @@ class _DetailsPageState extends State<DetailsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          ' Jewel Stack',
-          style: TextStyle(
+        title: Text(
+          'Jewel Stack',
+          style: GoogleFonts.poppins(
             fontWeight: FontWeight.w700,
-            fontSize: 24,
-            letterSpacing: 2.0,
-            color: Color(0xFFFAF9F6),
+            fontSize: 26,
+            letterSpacing: 1.5,
+            color: Colors.white,
           ),
         ),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Color(0xFF1F1F1F),
-                Color(0xFF2D2416),
-                Color(0xFF3E2723),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        foregroundColor: const Color(0xFFFAF9F6),
-        elevation: 2,
-        shadowColor: Colors.black.withOpacity(0.3),
+        backgroundColor: AppColors.primaryGold,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(0.4),
       ),
       drawer: Drawer(
-        backgroundColor: const Color(0xFFFAF9F6),
+        backgroundColor: AppColors.cardBackground,
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF1F1F1F),
-                    Color(0xFF2D2416),
-                    Color(0xFF3E2723),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: AppColors.darkBackground,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TweenAnimationBuilder(
-                    duration: const Duration(milliseconds: 600),
-                    tween: Tween<double>(begin: 0, end: 1),
-                    builder: (context, double value, child) {
-                      return Transform.scale(
-                        scale: value * 0.8 + 0.2,
-                        child: child,
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD4AF37).withOpacity(0.2),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFFD4AF37),
-                          width: 2,
-                        ),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGold.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.primaryGold,
+                        width: 2,
                       ),
-                      child: const Icon(
-                        Icons.account_circle,
-                        size: 50,
-                        color: Color(0xFFD4AF37),
-                      ),
+                    ),
+                    child: const Icon(
+                      Icons.account_circle,
+                      size: 50,
+                      color: AppColors.primaryGold,
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     user?.email ?? 'Guest User',
-                    style: const TextStyle(
-                      color: Color(0xFFFAF9F6),
+                    style: GoogleFonts.roboto(
+                      color: AppColors.cardBackground,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.5,
@@ -115,22 +101,22 @@ class _DetailsPageState extends State<DetailsPage> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8695D).withOpacity(0.1),
+                    color: AppColors.error.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: const Color(0xFFE8695D).withOpacity(0.3),
+                      color: AppColors.error.withOpacity(0.3),
                     ),
                   ),
                   child: const Icon(
                     Icons.logout,
-                    color: Color(0xFFE8695D),
+                    color: AppColors.error,
                     size: 20,
                   ),
                 ),
-                title: const Text(
+                title: Text(
                   'Logout',
-                  style: TextStyle(
-                    color: Color(0xFFE8695D),
+                  style: GoogleFonts.roboto(
+                    color: AppColors.error,
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
                   ),
@@ -147,7 +133,7 @@ class _DetailsPageState extends State<DetailsPage> {
         ),
       ),
       body: Container(
-        color: const Color(0xFFFAF9F6),
+        color: AppColors.lightBackground,
         child: Column(
           children: [
             Padding(
@@ -155,15 +141,15 @@ class _DetailsPageState extends State<DetailsPage> {
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: const Color(0xFFE8E6E1),
-                    width: 1,
+                    color: AppColors.primaryGold.withOpacity(0.2),
+                    width: 1.5,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 20,
+                      color: AppColors.primaryGold.withOpacity(0.08),
+                      blurRadius: 24,
                       offset: const Offset(0, 8),
                     ),
                   ],
@@ -176,7 +162,7 @@ class _DetailsPageState extends State<DetailsPage> {
                     _buildPremiumChip(
                       label: '🥇 Gold',
                       isSelected: _selectedCategory == 'Gold',
-                      accentColor: const Color(0xFFD4AF37),
+                      accentColor: AppColors.primaryGold,
                       onTap: () => setState(() => _selectedCategory = 'Gold'),
                     ),
                     _buildPremiumChip(
@@ -196,31 +182,11 @@ class _DetailsPageState extends State<DetailsPage> {
               ),
             ),
             Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 400),
-                switchInCurve: Curves.easeInOutCubic,
-                switchOutCurve: Curves.easeInOutCubic,
-                transitionBuilder: (child, animation) {
-                  return FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0.15, 0),
-                        end: Offset.zero,
-                      ).animate(CurvedAnimation(
-                        parent: animation,
-                        curve: Curves.easeInOutCubic,
-                      )),
-                      child: child,
-                    ),
-                  );
-                },
-                child: _selectedCategory == 'Gold'
-                    ? const GoldDetailsTab(key: ValueKey('gold'))
-                    : _selectedCategory == 'Rudraksh'
-                        ? const RudrakshDetailsTab(key: ValueKey('rudraksh'))
-                        : const GemstonesDetailsTab(key: ValueKey('gemstones')),
-              ),
+              child: _selectedCategory == 'Gold'
+                  ? const GoldDetailsTab()
+                  : _selectedCategory == 'Rudraksh'
+                      ? const RudrakshDetailsTab()
+                      : const GemstonesDetailsTab(),
             ),
           ],
         ),
@@ -238,34 +204,32 @@ class _DetailsPageState extends State<DetailsPage> {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
           decoration: BoxDecoration(
             color: isSelected ? accentColor : Colors.white,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: accentColor.withOpacity(isSelected ? 0 : 0.3),
-              width: 1.5,
+              color: accentColor.withOpacity(isSelected ? 0 : 0.4),
+              width: 2,
             ),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: accentColor.withOpacity(0.25),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
+                      color: accentColor.withOpacity(0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
                     ),
                   ]
                 : null,
           ),
           child: Text(
             label,
-            style: TextStyle(
+            style: GoogleFonts.poppins(
               color: isSelected ? Colors.white : accentColor,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-              fontSize: 14,
-              letterSpacing: 0.5,
+              fontSize: 15,
+              letterSpacing: 0.3,
             ),
           ),
         ),
@@ -283,17 +247,34 @@ class GoldDetailsTab extends StatelessWidget {
       stream: FirebaseFirestore.instance.collection('golddetails').snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return Center(
+            child: Text(
+              'Error: ${snapshot.error}',
+              style: GoogleFonts.roboto(color: AppColors.error),
+            ),
+          );
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation(AppColors.primaryGold),
+            ),
+          );
         }
 
         final docs = snapshot.data?.docs ?? [];
 
         if (docs.isEmpty) {
-          return const Center(child: Text('No gold details found.'));
+          return Center(
+            child: Text(
+              'No gold details found.',
+              style: GoogleFonts.roboto(
+                color: AppColors.textSecondary,
+                fontSize: 16,
+              ),
+            ),
+          );
         }
 
         return ListView.builder(
@@ -301,78 +282,54 @@ class GoldDetailsTab extends StatelessWidget {
           itemCount: docs.length,
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
-            return TweenAnimationBuilder(
-              duration: Duration(milliseconds: 400 + (index * 100)),
-              tween: Tween<double>(begin: 0, end: 1),
-              curve: Curves.easeInOutCubic,
-              builder: (context, double value, child) {
-                return Transform.translate(
-                  offset: Offset(0, 30 * (1 - value)),
-                  child: Opacity(
-                    opacity: value,
-                    child: child,
-                  ),
-                );
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFFAF9F6),
-                      const Color(0xFFD4AF37).withOpacity(0.08),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: const Color(0xFFD4AF37).withOpacity(0.3),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.primaryGold.withOpacity(0.25),
+                  width: 1.5,
                 ),
-                child: Theme(
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryGold.withOpacity(0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Theme(
                   data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                   child: ExpansionTile(
                     tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     leading: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFD4AF37), Color(0xFFC19A00)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: AppColors.primaryGold,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFD4AF37).withOpacity(0.3),
-                            blurRadius: 8,
+                            color: AppColors.primaryGold.withOpacity(0.35),
+                            blurRadius: 10,
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.diamond, color: Color(0xFFFAF9F6), size: 24),
+                      child: const Icon(Icons.diamond, color: Colors.white, size: 24),
                     ),
                     title: Text(
                       data['color of gold'] ?? 'N/A',
-                      style: const TextStyle(
+                      style: GoogleFonts.poppins(
                         fontWeight: FontWeight.w700,
                         fontSize: 18,
-                        color: Color(0xFF1F1F1F),
-                        letterSpacing: 0.5,
+                        color: AppColors.textPrimary,
+                        letterSpacing: 0.3,
                       ),
                     ),
                     subtitle: Text(
                       'Carat: ${data['carat of gold'] ?? 'N/A'} • Fineness: ${data['fineness'] ?? 'N/A'}',
-                      style: TextStyle(
-                        color: const Color(0xFFD4AF37).withOpacity(0.7),
+                      style: GoogleFonts.roboto(
+                        color: AppColors.primaryGold.withOpacity(0.7),
                         fontWeight: FontWeight.w500,
                         fontSize: 13,
                       ),
@@ -381,14 +338,14 @@ class GoldDetailsTab extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFAF9F6).withOpacity(0.8),
+                          color: AppColors.lightBackground,
                           borderRadius: const BorderRadius.only(
                             bottomLeft: Radius.circular(16),
                             bottomRight: Radius.circular(16),
                           ),
                           border: Border(
                             top: BorderSide(
-                              color: const Color(0xFFD4AF37).withOpacity(0.2),
+                              color: AppColors.primaryGold.withOpacity(0.15),
                               width: 1,
                             ),
                           ),
@@ -396,7 +353,7 @@ class GoldDetailsTab extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildPremiumDetailRow('Gold Content', data['gold'] ?? 'N/A', const Color(0xFFD4AF37)),
+                            _buildPremiumDetailRow('Gold Content', data['gold'] ?? 'N/A', AppColors.primaryGold),
                             _buildPremiumDetailRow('Silver Content', data['silver'] ?? 'N/A', const Color(0xFFC0C0C0)),
                             _buildPremiumDetailRow('Copper Content', data['copper'] ?? 'N/A', const Color(0xFFB87333)),
                             _buildPremiumDetailRow('Other Metals', data['other'] ?? 'N/A', const Color(0xFF9CA3AF)),
@@ -406,7 +363,6 @@ class GoldDetailsTab extends StatelessWidget {
                     ],
                   ),
                 ),
-              ),
             );
           },
         );
@@ -437,9 +393,9 @@ class GoldDetailsTab extends StatelessWidget {
             flex: 2,
             child: Text(
               label,
-              style: const TextStyle(
+              style: GoogleFonts.roboto(
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF3F3F3F),
+                color: AppColors.textSecondary,
                 fontSize: 14,
               ),
             ),
@@ -448,11 +404,11 @@ class GoldDetailsTab extends StatelessWidget {
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
+              style: GoogleFonts.montserrat(
+                fontWeight: FontWeight.w600,
                 color: accentColor,
                 fontSize: 14,
-                letterSpacing: 0.5,
+                letterSpacing: 0.3,
               ),
             ),
           ),
@@ -471,17 +427,34 @@ class RudrakshDetailsTab extends StatelessWidget {
       stream: FirebaseFirestore.instance.collection('rudrakshdetails').snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return Center(
+            child: Text(
+              'Error: ${snapshot.error}',
+              style: GoogleFonts.roboto(color: AppColors.error),
+            ),
+          );
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation(AppColors.primaryGold),
+            ),
+          );
         }
 
         final docs = snapshot.data?.docs ?? [];
 
         if (docs.isEmpty) {
-          return const Center(child: Text('No rudraksh details found.'));
+          return Center(
+            child: Text(
+              'No rudraksh details found.',
+              style: GoogleFonts.roboto(
+                color: AppColors.textSecondary,
+                fontSize: 16,
+              ),
+            ),
+          );
         }
 
         return ListView.builder(
@@ -492,43 +465,23 @@ class RudrakshDetailsTab extends StatelessWidget {
             final symbolism = (data['symbolism'] as List<dynamic>?)?.cast<String>() ?? [];
             final healthBenifits = (data['health benifits'] as List<dynamic>?)?.cast<String>() ?? [];
 
-            return TweenAnimationBuilder(
-              duration: Duration(milliseconds: 400 + (index * 100)),
-              tween: Tween<double>(begin: 0, end: 1),
-              curve: Curves.easeInOutCubic,
-              builder: (context, double value, child) {
-                return Transform.translate(
-                  offset: Offset(0, 30 * (1 - value)),
-                  child: Opacity(
-                    opacity: value,
-                    child: child,
-                  ),
-                );
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFFAF9F6),
-                      const Color(0xFF8B7355).withOpacity(0.08),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: const Color(0xFF8B7355).withOpacity(0.3),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFF8B7355).withOpacity(0.25),
+                  width: 1.5,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF8B7355).withOpacity(0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
                 child: Theme(
                   data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                   child: ExpansionTile(
@@ -536,33 +489,29 @@ class RudrakshDetailsTab extends StatelessWidget {
                     leading: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF5D4037), Color(0xFF3E2723)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: const Color(0xFF5D4037),
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF5D4037).withOpacity(0.3),
-                            blurRadius: 8,
+                            color: const Color(0xFF5D4037).withOpacity(0.35),
+                            blurRadius: 10,
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.grain, color: Color(0xFFFAF9F6), size: 24),
+                      child: const Icon(Icons.grain, color: Colors.white, size: 24),
                     ),
                     title: Text(
                       data['type of rudraksh'] ?? 'N/A',
-                      style: const TextStyle(
+                      style: GoogleFonts.poppins(
                         fontWeight: FontWeight.w700,
                         fontSize: 18,
-                        color: Color(0xFF1F1F1F),
-                        letterSpacing: 0.5,
+                        color: AppColors.textPrimary,
+                        letterSpacing: 0.3,
                       ),
                     ),
                     subtitle: Text(
                       'Sacred Spiritual Bead',
-                      style: TextStyle(
+                      style: GoogleFonts.roboto(
                         color: const Color(0xFF8B7355).withOpacity(0.7),
                         fontWeight: FontWeight.w500,
                         fontSize: 13,
@@ -572,14 +521,14 @@ class RudrakshDetailsTab extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFAF9F6).withOpacity(0.8),
+                          color: AppColors.lightBackground,
                           borderRadius: const BorderRadius.only(
                             bottomLeft: Radius.circular(16),
                             bottomRight: Radius.circular(16),
                           ),
                           border: Border(
                             top: BorderSide(
-                              color: const Color(0xFF8B7355).withOpacity(0.2),
+                              color: const Color(0xFF8B7355).withOpacity(0.15),
                               width: 1,
                             ),
                           ),
@@ -599,7 +548,6 @@ class RudrakshDetailsTab extends StatelessWidget {
                     ],
                   ),
                 ),
-              ),
             );
           },
         );
@@ -628,11 +576,11 @@ class RudrakshDetailsTab extends StatelessWidget {
             const SizedBox(width: 12),
             Text(
               label,
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 fontWeight: FontWeight.w700,
                 color: accentColor,
                 fontSize: 14,
-                letterSpacing: 0.5,
+                letterSpacing: 0.3,
               ),
             ),
           ],
@@ -655,8 +603,8 @@ class RudrakshDetailsTab extends StatelessWidget {
                 Expanded(
                   child: Text(
                     entry.value,
-                    style: const TextStyle(
-                      color: Color(0xFF3F3F3F),
+                    style: GoogleFonts.roboto(
+                      color: AppColors.textSecondary,
                       fontSize: 14,
                       height: 1.5,
                     ),
@@ -680,17 +628,34 @@ class GemstonesDetailsTab extends StatelessWidget {
       stream: FirebaseFirestore.instance.collection('gemstone').snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return Center(
+            child: Text(
+              'Error: ${snapshot.error}',
+              style: GoogleFonts.roboto(color: AppColors.error),
+            ),
+          );
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation(AppColors.primaryGold),
+            ),
+          );
         }
 
         final docs = snapshot.data?.docs ?? [];
 
         if (docs.isEmpty) {
-          return const Center(child: Text('No gemstone details found.'));
+          return Center(
+            child: Text(
+              'No gemstone details found.',
+              style: GoogleFonts.roboto(
+                color: AppColors.textSecondary,
+                fontSize: 16,
+              ),
+            ),
+          );
         }
 
         return ListView.builder(
@@ -702,43 +667,23 @@ class GemstonesDetailsTab extends StatelessWidget {
             final wearingInstructions = (data['wearingInstructions'] as List<dynamic>?)?.cast<String>() ?? [];
             final benifits = (data['benifits'] as List<dynamic>?)?.cast<String>() ?? [];
 
-            return TweenAnimationBuilder(
-              duration: Duration(milliseconds: 400 + (index * 100)),
-              tween: Tween<double>(begin: 0, end: 1),
-              curve: Curves.easeInOutCubic,
-              builder: (context, double value, child) {
-                return Transform.translate(
-                  offset: Offset(0, 30 * (1 - value)),
-                  child: Opacity(
-                    opacity: value,
-                    child: child,
-                  ),
-                );
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFFAF9F6),
-                      const Color(0xFF1E3A5F).withOpacity(0.06),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: const Color(0xFF1E3A5F).withOpacity(0.3),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFF1E3A5F).withOpacity(0.25),
+                  width: 1.5,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF1E3A5F).withOpacity(0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
                 child: Theme(
                   data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                   child: ExpansionTile(
@@ -746,33 +691,29 @@ class GemstonesDetailsTab extends StatelessWidget {
                     leading: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF1E3A5F), Color(0xFF2D5016)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: const Color(0xFF1E3A5F),
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF1E3A5F).withOpacity(0.3),
-                            blurRadius: 8,
+                            color: const Color(0xFF1E3A5F).withOpacity(0.35),
+                            blurRadius: 10,
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.diamond, color: Color(0xFFFAF9F6), size: 24),
+                      child: const Icon(Icons.diamond, color: Colors.white, size: 24),
                     ),
                     title: Text(
                       data['name'] ?? 'N/A',
-                      style: const TextStyle(
+                      style: GoogleFonts.poppins(
                         fontWeight: FontWeight.w700,
                         fontSize: 18,
-                        color: Color(0xFF1F1F1F),
-                        letterSpacing: 0.5,
+                        color: AppColors.textPrimary,
+                        letterSpacing: 0.3,
                       ),
                     ),
                     subtitle: Text(
                       '${data['primaryGemstone'] ?? 'N/A'} • Alt: ${data['alternative'] ?? 'N/A'}',
-                      style: TextStyle(
+                      style: GoogleFonts.roboto(
                         color: const Color(0xFF1E3A5F).withOpacity(0.7),
                         fontWeight: FontWeight.w500,
                         fontSize: 13,
@@ -782,14 +723,14 @@ class GemstonesDetailsTab extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFAF9F6).withOpacity(0.8),
+                          color: AppColors.lightBackground,
                           borderRadius: const BorderRadius.only(
                             bottomLeft: Radius.circular(16),
                             bottomRight: Radius.circular(16),
                           ),
                           border: Border(
                             top: BorderSide(
-                              color: const Color(0xFF1E3A5F).withOpacity(0.2),
+                              color: const Color(0xFF1E3A5F).withOpacity(0.15),
                               width: 1,
                             ),
                           ),
@@ -821,7 +762,6 @@ class GemstonesDetailsTab extends StatelessWidget {
                     ],
                   ),
                 ),
-              ),
             );
           },
         );
@@ -852,9 +792,9 @@ class GemstonesDetailsTab extends StatelessWidget {
             flex: 2,
             child: Text(
               label,
-              style: const TextStyle(
+              style: GoogleFonts.roboto(
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF3F3F3F),
+                color: AppColors.textSecondary,
                 fontSize: 14,
               ),
             ),
@@ -863,11 +803,11 @@ class GemstonesDetailsTab extends StatelessWidget {
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
+              style: GoogleFonts.montserrat(
+                fontWeight: FontWeight.w600,
                 color: accentColor,
                 fontSize: 13,
-                letterSpacing: 0.3,
+                letterSpacing: 0.2,
               ),
             ),
           ),
@@ -897,11 +837,11 @@ class GemstonesDetailsTab extends StatelessWidget {
             const SizedBox(width: 12),
             Text(
               label,
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 fontWeight: FontWeight.w700,
                 color: accentColor,
                 fontSize: 14,
-                letterSpacing: 0.5,
+                letterSpacing: 0.3,
               ),
             ),
           ],
@@ -924,8 +864,8 @@ class GemstonesDetailsTab extends StatelessWidget {
                 Expanded(
                   child: Text(
                     entry.value,
-                    style: const TextStyle(
-                      color: Color(0xFF3F3F3F),
+                    style: GoogleFonts.roboto(
+                      color: AppColors.textSecondary,
                       fontSize: 14,
                       height: 1.5,
                     ),
