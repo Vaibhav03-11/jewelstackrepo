@@ -17,6 +17,7 @@ class InventoryListPage extends StatefulWidget {
 class _InventoryListPageState extends State<InventoryListPage> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'All';
+  _StockFilter _stockFilter = _StockFilter.all;
 
   @override
   void initState() {
@@ -31,17 +32,19 @@ class _InventoryListPageState extends State<InventoryListPage> {
     return Scaffold(
       backgroundColor: AppColors.lightBackground,
       body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(),
-            // Search and Filter
-            _buildSearchFilter(),
-            // Statistics
-            _buildStatistics(),
-            // Inventory List
-            _buildInventoryList(),
-          ],
+        child: RefreshIndicator(
+          onRefresh: () async {
+            Provider.of<InventoryProvider>(context, listen: false).initialize();
+          },
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(child: _buildHeader()),
+              SliverToBoxAdapter(child: _buildSearchFilter()),
+              SliverToBoxAdapter(child: _buildStatistics()),
+              _buildInventoryList(),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -155,33 +158,53 @@ class _InventoryListPageState extends State<InventoryListPage> {
           child: GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+            crossAxisSpacing: 6,
+            mainAxisSpacing: 6,
+            physics: ScrollPhysics(),
             children: [
               InventoryStatsCard(
                 title: 'Total Items',
                 value: stats['totalItems'].toString(),
                 color: AppColors.primaryGold,
                 icon: Icons.inventory_2,
+                onTap: () {
+                  setState(() {
+                    _stockFilter = _StockFilter.all;
+                  });
+                },
               ),
               InventoryStatsCard(
                 title: 'Low Stock',
                 value: stats['lowStock'].toString(),
-                color: AppColors.warning,
+                color: AppColors.primaryGold,
                 icon: Icons.warning,
+                onTap: () {
+                  setState(() {
+                    _stockFilter = _StockFilter.low;
+                  });
+                },
               ),
               InventoryStatsCard(
                 title: 'Out of Stock',
                 value: stats['outOfStock'].toString(),
                 color: AppColors.error,
                 icon: Icons.error,
+                onTap: () {
+                  setState(() {
+                    _stockFilter = _StockFilter.out;
+                  });
+                },
               ),
               InventoryStatsCard(
                 title: 'Total Value',
                 value: '₹${stats['totalValue']}',
                 color: AppColors.success,
                 icon: Icons.attach_money,
+                onTap: () {
+                  setState(() {
+                    _stockFilter = _StockFilter.all;
+                  });
+                },
               ),
             ],
           ),
@@ -190,97 +213,100 @@ class _InventoryListPageState extends State<InventoryListPage> {
     );
   }
 
-  // Replace the Consumer in _buildInventoryList with this improved version:
-Widget _buildInventoryList() {
-  return Expanded(
-    child: Consumer<InventoryProvider>(
-      builder: (context, provider, child) {
+    // Replace the Consumer in _buildInventoryList with this improved version:
+    Widget _buildInventoryList() {
+      return Consumer<InventoryProvider>(
+        builder: (context, provider, child) {
+        final searchQuery = _searchController.text.trim();
+        final visibleItems = _applyStockFilter(provider.filteredItems);
         // Show loading only on initial load
         if (provider.isLoading && provider.allItems.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
+            return SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Loading inventory...',
+                      style: TextStyle(
+                        fontFamily: 'Roboto',
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 16),
-                Text(
-                  'Loading inventory...',
-                  style: TextStyle(
-                    fontFamily: 'Roboto',
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          );
+              ),
+            );
         }
 
-        if (provider.filteredItems.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.inventory_2,
-                  size: 64,
-                  color: AppColors.hintColor,
+        if (visibleItems.isEmpty) {
+            return SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.inventory_2,
+                      size: 64,
+                      color: AppColors.hintColor,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      _buildEmptyStateMessage(searchQuery),
+                      style: TextStyle(
+                        fontFamily: 'Roboto',
+                        fontSize: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    if (searchQuery.isNotEmpty)
+                      TextButton(
+                        onPressed: () {
+                          _searchController.clear();
+                          Provider.of<InventoryProvider>(context, listen: false)
+                              .searchItems('');
+                        },
+                        child: Text('Clear search'),
+                      ),
+                  ],
                 ),
-                SizedBox(height: 16),
-                Text(
-                  _searchQuery.isNotEmpty 
-                      ? 'No items found for "$_searchQuery"'
-                      : 'No inventory items yet',
-                  style: TextStyle(
-                    fontFamily: 'Roboto',
-                    fontSize: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                SizedBox(height: 8),
-                if (_searchQuery.isNotEmpty)
-                  TextButton(
-                    onPressed: () {
-                      _searchController.clear();
-                      Provider.of<InventoryProvider>(context, listen: false)
-                          .searchItems('');
-                    },
-                    child: Text('Clear search'),
-                  ),
-              ],
-            ),
-          );
+              ),
+            );
         }
 
-        return RefreshIndicator(
-          onRefresh: () async {
-            // Force refresh data
-            provider.initialize();
-          },
-          child: ListView.builder(
-            itemCount: provider.filteredItems.length,
-            itemBuilder: (context, index) {
-              final item = provider.filteredItems[index];
-              return InventoryCard(
-                item: item,
-                onTap: () {
-                  _showItemDetails(context, item);
-                },
-                onEdit: () {
-                  _editItem(context, item);
-                },
-                onDelete: () {
-                  _deleteItem(context, item);
-                },
-              );
-            },
-          ),
-        );
-      },
-    ),
-  );
-}
+          return SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final item = visibleItems[index];
+                return InventoryCard(
+                  item: item,
+                  onTap: () {
+                    _showItemDetails(context, item);
+                  },
+                  onSell: () {
+                    _sellItem(context, item);
+                  },
+                  onEdit: () {
+                    _editItem(context, item);
+                  },
+                  onDelete: () {
+                    _deleteItem(context, item);
+                  },
+                );
+              },
+              childCount: visibleItems.length,
+            ),
+          );
+        },
+      );
+    }
 
   void _showItemDetails(BuildContext context, InventoryItem item) {
     showDialog(
@@ -369,6 +395,116 @@ Widget _buildInventoryList() {
     );
   }
 
+  void _sellItem(BuildContext context, InventoryItem item) {
+    if (item.stock <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Item is out of stock'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final quantityController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Sell Item'),
+        content: TextField(
+          controller: quantityController,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: 'Quantity to sell',
+            hintText: 'Enter quantity',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final quantity = int.tryParse(quantityController.text.trim());
+              if (quantity == null || quantity <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Enter a valid quantity'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+                return;
+              }
+              if (quantity > item.stock) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Quantity exceeds available stock'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+                return;
+              }
+
+              try {
+                await Provider.of<InventoryProvider>(context, listen: false)
+                    .updateStock(item.id, item.stock - quantity);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Stock updated successfully'),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to update stock: $e'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryGold,
+              foregroundColor: AppColors.textLight,
+            ),
+            child: Text('Sell'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<InventoryItem> _applyStockFilter(List<InventoryItem> items) {
+    switch (_stockFilter) {
+      case _StockFilter.low:
+        return items.where((item) => item.stock > 0 && item.stock < 5).toList();
+      case _StockFilter.out:
+        return items.where((item) => item.stock == 0).toList();
+      case _StockFilter.all:
+      default:
+        return items;
+    }
+  }
+
+  String _buildEmptyStateMessage(String searchQuery) {
+    if (searchQuery.isNotEmpty) {
+      return 'No items found for "$searchQuery"';
+    }
+    switch (_stockFilter) {
+      case _StockFilter.low:
+        return 'No low stock items';
+      case _StockFilter.out:
+        return 'No out of stock items';
+      case _StockFilter.all:
+      default:
+        return 'No inventory items yet';
+    }
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -376,6 +512,5 @@ Widget _buildInventoryList() {
   }
 }
 
-class _searchQuery {
-  static var isNotEmpty;
-}
+enum _StockFilter { all, low, out }
+

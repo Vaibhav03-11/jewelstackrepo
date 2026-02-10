@@ -5,6 +5,8 @@ import '../../../inventory/presentation/pages/inventory_list_page.dart';
 import '../../../orders/presentation/pages/order_list_page.dart';
 import '../../../orders/presentation/pages/customer_list_page.dart';
 import 'details_page.dart';
+import 'alloy_melting_calculator.dart';
+import 'ml_insights.dart';
 
 class MainDashboard extends StatefulWidget {
   @override
@@ -16,10 +18,11 @@ class _MainDashboardState extends State<MainDashboard> {
 
   final List<Widget> _pages = [
     DetailsPage(),
+    const AlloyMeltingCalculatorPage(),
     InventoryListPage(),
     CustomerListPage(),
     OrderListPage(),
-    _MLInsightsPage(),
+    const MlInsightsPage(),
   ];
 
   @override
@@ -52,6 +55,10 @@ class _MainDashboardState extends State<MainDashboard> {
             label: 'Details',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.calculate),
+            label: 'Alloy',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.inventory_2),
             label: 'Inventory',
           ),
@@ -68,137 +75,6 @@ class _MainDashboardState extends State<MainDashboard> {
             label: 'ML Insights',
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _MLInsightsPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          '✨ ML Insights',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 24,
-            letterSpacing: 2.0,
-            color: Color(0xFFFAF9F6),
-          ),
-        ),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Color(0xFF1F1F1F),
-                Color(0xFF2D2416),
-                Color(0xFF3E2723),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        foregroundColor: const Color(0xFFFAF9F6),
-        elevation: 2,
-        shadowColor: Colors.black.withOpacity(0.3),
-      ),
-      backgroundColor: const Color(0xFFFAF9F6),
-      body: Center(
-        child: TweenAnimationBuilder(
-          duration: const Duration(milliseconds: 800),
-          tween: Tween<double>(begin: 0, end: 1),
-          curve: Curves.easeInOutCubic,
-          builder: (context, double value, child) {
-            return Transform.scale(
-              scale: value * 0.8 + 0.2,
-              child: Opacity(
-                opacity: value,
-                child: child,
-              )
-            );
-          },
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(40),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2D5016), Color(0xFF1E3A5F)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF1E3A5F).withOpacity(0.3),
-                      blurRadius: 24,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.analytics,
-                  size: 100,
-                  color: Color(0xFFFAF9F6),
-                ),
-              ),
-              const SizedBox(height: 40),
-              Text(
-                'ML Insights Module',
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1F1F1F),
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFD4AF37).withOpacity(0.15),
-                      const Color(0xFFD4AF37).withOpacity(0.08),
-                    ],
-                  ),
-                  border: Border.all(
-                    color: const Color(0xFFD4AF37).withOpacity(0.4),
-                    width: 1.5,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: const Text(
-                  'Coming Soon',
-                  style: TextStyle(
-                    fontFamily: 'Roboto',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFFD4AF37),
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Advanced jewelry analytics and insights powered by machine learning',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Roboto',
-                  fontSize: 14,
-                  color: Colors.grey.shade600,
-                  height: 1.6,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

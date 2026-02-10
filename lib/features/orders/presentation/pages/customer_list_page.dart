@@ -4,8 +4,8 @@ import 'package:jewelstack/core/widgets/custom_textfield.dart';
 import 'package:provider/provider.dart';
 import '../../application/order_provider.dart';
 import '../../domain/customer_model.dart';
-import '../../core/constants/colors.dart';
-import '../../core/widgets/custom_textfield.dart';
+
+enum _CustomerAction { edit, delete }
 
 class CustomerListPage extends StatefulWidget {
   const CustomerListPage({Key? key}) : super(key: key);
@@ -147,24 +147,52 @@ class _CustomerListPageState extends State<CustomerListPage> {
             ),
           ],
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '${customer.totalOrders} orders',
-              style: TextStyle(
-                fontFamily: 'Montserrat',
-                fontWeight: FontWeight.w500,
-              ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${customer.totalOrders} orders',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  '₹${customer.totalSpent.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.primaryGold,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-            Text(
-              '₹${customer.totalSpent.toStringAsFixed(0)}',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.primaryGold,
-                fontWeight: FontWeight.bold,
-              ),
+            SizedBox(width: 8),
+            PopupMenuButton<_CustomerAction>(
+              onSelected: (action) {
+                switch (action) {
+                  case _CustomerAction.edit:
+                    _showEditCustomerDialog(context, customer);
+                    break;
+                  case _CustomerAction.delete:
+                    _confirmDeleteCustomer(context, customer);
+                    break;
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: _CustomerAction.edit,
+                  child: Text('Edit'),
+                ),
+                PopupMenuItem(
+                  value: _CustomerAction.delete,
+                  child: Text('Delete'),
+                ),
+              ],
             ),
           ],
         ),
@@ -177,6 +205,147 @@ class _CustomerListPageState extends State<CustomerListPage> {
           ),
         );
         },
+      ),
+    );
+  }
+
+  void _showEditCustomerDialog(BuildContext context, Customer customer) {
+    final nameController = TextEditingController(text: customer.name);
+    final contactController =
+        TextEditingController(text: customer.contactNumber);
+    final addressController =
+        TextEditingController(text: customer.address ?? '');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit Customer'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: 'Full Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 12),
+              TextField(
+                controller: contactController,
+                decoration: InputDecoration(
+                  labelText: 'Contact Number',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              SizedBox(height: 12),
+              TextField(
+                controller: addressController,
+                decoration: InputDecoration(
+                  labelText: 'Address (Optional)',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.isEmpty ||
+                  contactController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Please fill required fields'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+                return;
+              }
+
+              final updatedCustomer = customer.copyWith(
+                name: nameController.text.trim(),
+                contactNumber: contactController.text.trim(),
+                address: addressController.text.trim().isEmpty
+                    ? null
+                    : addressController.text.trim(),
+              );
+
+              try {
+                await Provider.of<OrderProvider>(context, listen: false)
+                    .updateCustomer(updatedCustomer);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Customer updated'),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to update customer: $e'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryGold,
+            ),
+            child: Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteCustomer(BuildContext context, Customer customer) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Customer'),
+        content: Text('Are you sure you want to delete ${customer.name}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await Provider.of<OrderProvider>(context, listen: false)
+                    .deleteCustomer(customer.id);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Customer deleted'),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to delete customer: $e'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: AppColors.textLight,
+            ),
+            child: Text('Delete'),
+          ),
+        ],
       ),
     );
   }

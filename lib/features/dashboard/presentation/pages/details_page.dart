@@ -1,7 +1,13 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart' show NumberFormat;
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../auth/application/auth_service.dart';
 
 // Color Palette
@@ -28,7 +34,78 @@ class DetailsPage extends StatefulWidget {
 }
 
 class _DetailsPageState extends State<DetailsPage> {
+  static const String _goldApiKey = 'goldapi-3o7yqsmfwlwyiv-io';
+  static const String _goldApiUrl = 'https://www.goldapi.io/api/XAU/INR';
+  static const String _silverApiUrl = 'https://www.goldapi.io/api/XAG/INR';
+
   String _selectedCategory = 'Gold';
+  Future<MetalTickerData>? _tickerFuture;
+  Timer? _tickerRefreshTimer;
+
+  String _profileName = '';
+  String _profileShopName = '';
+  String _profileShopLocation = '';
+  String _profileMobile = '';
+  bool _isProfileExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tickerFuture = _fetchTickerData();
+    _tickerRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _tickerFuture = _fetchTickerData();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _tickerRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<MetalTickerData> _fetchTickerData() async {
+    final results = await Future.wait([
+      _fetchMetalPrice(label: 'Gold 24K', url: _goldApiUrl),
+      _fetchMetalPrice(label: 'Silver', url: _silverApiUrl),
+    ]);
+
+    return MetalTickerData(
+      gold: results[0],
+      silver: results[1],
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  Future<MetalPrice> _fetchMetalPrice({
+    required String label,
+    required String url,
+  }) async {
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'x-access-token': _goldApiKey,
+        'Content-Type': 'application/json',
+      },
+    );
+    print("--> ${response.body}");
+    if (response.statusCode != 200) {
+      throw Exception('Price fetch failed: ${response.statusCode}');
+    }
+
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    final rawValue = payload['price_gram_24k'] ??
+        payload['price_gram_999'] ??
+        payload['price'] ??
+        payload['bid'];
+    final price = rawValue is num ? rawValue.toDouble() : double.tryParse('$rawValue');
+
+    return MetalPrice(label: label, pricePerGram: price);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,16 +127,38 @@ class _DetailsPageState extends State<DetailsPage> {
         foregroundColor: Colors.white,
         elevation: 4,
         shadowColor: Colors.black.withOpacity(0.4),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(44),
+          child: PriceTickerBar(pricesFuture: _tickerFuture),
+        ),
       ),
       drawer: Drawer(
-        backgroundColor: AppColors.cardBackground,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(
-                color: AppColors.darkBackground,
-              ),
+        backgroundColor: AppColors.lightBackground,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.lightBackground,
+                AppColors.cardBackground,
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.darkBackground,
+                      AppColors.secondaryGold,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -93,7 +192,74 @@ class _DetailsPageState extends State<DetailsPage> {
                 ],
               ),
             ),
+            _buildProfileCard(context),
             const SizedBox(height: 8),
+            MouseRegion(
+              onEnter: (_) {},
+              onExit: (_) {},
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGold.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.primaryGold.withOpacity(0.3),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.info_outline,
+                    color: AppColors.primaryGold,
+                    size: 20,
+                  ),
+                ),
+                title: Text(
+                  'About Us',
+                  style: GoogleFonts.roboto(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showAboutDialog(context);
+                },
+              ),
+            ),
+            MouseRegion(
+              onEnter: (_) {},
+              onExit: (_) {},
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondaryGold.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.secondaryGold.withOpacity(0.3),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.support_agent,
+                    color: AppColors.secondaryGold,
+                    size: 20,
+                  ),
+                ),
+                title: Text(
+                  'Contact Us',
+                  style: GoogleFonts.roboto(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showContactSheet(context);
+                },
+              ),
+            ),
             MouseRegion(
               onEnter: (_) {},
               onExit: (_) {},
@@ -129,7 +295,8 @@ class _DetailsPageState extends State<DetailsPage> {
                 },
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
       body: Container(
@@ -137,7 +304,7 @@ class _DetailsPageState extends State<DetailsPage> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -154,10 +321,8 @@ class _DetailsPageState extends State<DetailsPage> {
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.all(16),
-                child: Wrap(
-                  spacing: 12,
-                  alignment: WrapAlignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                child: Row(
                   children: [
                     _buildPremiumChip(
                       label: '🥇 Gold',
@@ -234,6 +399,690 @@ class _DetailsPageState extends State<DetailsPage> {
           ),
         ),
       ),
+    );
+  }
+
+  bool get _hasProfileData {
+    return _profileName.isNotEmpty ||
+        _profileShopName.isNotEmpty ||
+        _profileShopLocation.isNotEmpty ||
+        _profileMobile.isNotEmpty;
+  }
+
+  Widget _buildProfileCard(BuildContext context) {
+    return InkWell(
+      onTap: () => setState(() => _isProfileExpanded = !_isProfileExpanded),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryGold.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Profile',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                Icon(
+                  _isProfileExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                TextButton.icon(
+                  onPressed: () => _showProfileEditor(context),
+                  icon: const Icon(Icons.edit, size: 16),
+                  label: const Text('Edit'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primaryGold,
+                    textStyle: GoogleFonts.roboto(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            if (_isProfileExpanded)
+              if (!_hasProfileData)
+                Text(
+                  'Add your details to personalize the drawer.',
+                  style: GoogleFonts.roboto(
+                    color: AppColors.textSecondary,
+                    fontSize: 12.5,
+                  ),
+                )
+              else ...[
+                _buildProfileInfoRow('Name', _profileName),
+                _buildProfileInfoRow('Shop', _profileShopName),
+                _buildProfileInfoRow('Location', _profileShopLocation),
+                _buildProfileInfoRow('Mobile', _profileMobile),
+              ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileInfoRow(String label, String value) {
+    if (value.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label: ',
+            style: GoogleFonts.roboto(
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+              fontSize: 12.5,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: GoogleFonts.roboto(
+                color: AppColors.textPrimary,
+                fontSize: 12.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showProfileEditor(BuildContext context) {
+    final nameController = TextEditingController(text: _profileName);
+    final shopController = TextEditingController(text: _profileShopName);
+    final locationController = TextEditingController(text: _profileShopLocation);
+    final mobileController = TextEditingController(text: _profileMobile);
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: Text(
+            'Edit Profile',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildProfileField('User name', nameController),
+                const SizedBox(height: 12),
+                _buildProfileField('Shop name', shopController),
+                const SizedBox(height: 12),
+                _buildProfileField('Shop location', locationController),
+                const SizedBox(height: 12),
+                _buildProfileField(
+                  'Mobile number',
+                  mobileController,
+                  keyboardType: TextInputType.phone,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.roboto(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _profileName = nameController.text.trim();
+                  _profileShopName = shopController.text.trim();
+                  _profileShopLocation = locationController.text.trim();
+                  _profileMobile = mobileController.text.trim();
+                });
+                Navigator.of(dialogContext).pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGold,
+                foregroundColor: Colors.white,
+              ),
+              child: Text(
+                'Save',
+                style: GoogleFonts.roboto(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildProfileField(
+    String label,
+    TextEditingController controller, {
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primaryGold),
+        ),
+      ),
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGold.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.primaryGold.withOpacity(0.25),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.auto_awesome,
+                      color: AppColors.primaryGold,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'About JewelStack',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Purpose-built for jewelry retailers and artisans.',
+                style: GoogleFonts.roboto(
+                  fontSize: 12.5,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                height: 1,
+                width: double.infinity,
+                color: AppColors.borderColor,
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'At JewelStack, we believe small jewelry businesses and artisans '
+                  'deserve the same powerful tools as large retailers. The jewelry '
+                  'industry often struggles with challenges like inventory '
+                  'mismanagement, price volatility, and inefficient order '
+                  'processing. Traditional manual systems simply do not provide the '
+                  'real-time insights needed to thrive in today’s market.',
+                  style: GoogleFonts.roboto(
+                    fontSize: 14,
+                    height: 1.55,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'That is why we built JewelStack — a mobile-first jewelry '
+                  'inventory management system designed to transform everyday '
+                  'operations into streamlined digital workflows.',
+                  style: GoogleFonts.roboto(
+                    fontSize: 14,
+                    height: 1.55,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGold.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.primaryGold.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Text(
+                    'Created by Vaibhav and designed at PES University.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(
+                'Close',
+                style: GoogleFonts.roboto(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primaryGold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showContactSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          decoration: const BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Contact Us',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'We are here to help you quickly.',
+                style: GoogleFonts.roboto(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildContactTile(
+                icon: Icons.email_outlined,
+                label: 'Email',
+                value: 'vaibhavsureshkurdekar@gmail.com',
+                color: AppColors.primaryGold,
+                onTap: () => _launchExternal(
+                  'mailto:vaibhavsureshkurdekar@gmail.com',
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildContactTile(
+                icon: Icons.chat_bubble_outline,
+                label: 'WhatsApp',
+                value: '+91 8904064179',
+                color: const Color(0xFF25D366),
+                onTap: () => _launchExternal(
+                  'https://wa.me/918904064179',
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildContactTile({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.borderColor),
+            color: Colors.white,
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: GoogleFonts.roboto(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      style: GoogleFonts.roboto(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: color.withOpacity(0.7)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _launchExternal(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to open the link.')),
+        );
+      }
+    }
+  }
+}
+
+class MetalPrice {
+  final String label;
+  final double? pricePerGram;
+
+  const MetalPrice({
+    required this.label,
+    required this.pricePerGram,
+  });
+}
+
+class MetalTickerData {
+  final MetalPrice gold;
+  final MetalPrice silver;
+  final DateTime updatedAt;
+
+  const MetalTickerData({
+    required this.gold,
+    required this.silver,
+    required this.updatedAt,
+  });
+}
+
+class PriceTickerBar extends StatefulWidget {
+  final Future<MetalTickerData>? pricesFuture;
+
+  const PriceTickerBar({
+    super.key,
+    required this.pricesFuture,
+  });
+
+  @override
+  State<PriceTickerBar> createState() => _PriceTickerBarState();
+}
+
+class _PriceTickerBarState extends State<PriceTickerBar> {
+  final NumberFormat _currencyFormat = NumberFormat.currency(
+    locale: 'en_IN',
+    symbol: '₹',
+    decimalDigits: 2,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 44,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.darkBackground, Color(0xFF101010)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        border: const Border(
+          top: BorderSide(color: AppColors.primaryGold, width: 0.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: FutureBuilder<MetalTickerData>(
+        future: widget.pricesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Row(
+              children: [
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation(AppColors.accentGold),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Loading prices...',
+                  style: GoogleFonts.roboto(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            );
+          }
+
+          if (snapshot.hasError || !snapshot.hasData) {
+            return Text(
+              'Prices unavailable',
+              style: GoogleFonts.roboto(
+                color: Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            );
+          }
+
+          final data = snapshot.data!;
+          final goldText = _formatPrice(data.gold);
+          final silverText = _formatPrice(data.silver);
+          final tickerText = '$goldText   •   $silverText';
+
+          return TickerTape(
+            text: tickerText,
+            style: GoogleFonts.poppins(
+              color: AppColors.accentGold.withOpacity(0.75),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+              shadows: [
+                Shadow(
+                  color: AppColors.primaryGold.withOpacity(0.6),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+            duration: const Duration(seconds: 22),
+          );
+        },
+      ),
+    );
+  }
+
+  String _formatPrice(MetalPrice price) {
+    final value = price.pricePerGram;
+    if (value == null) {
+      return '${price.label}: --/g';
+    }
+    return '${price.label}: ${_currencyFormat.format(value)}/g';
+  }
+}
+
+class TickerTape extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+  final Duration duration;
+
+  const TickerTape({
+    super.key,
+    required this.text,
+    required this.style,
+    required this.duration,
+  });
+
+  @override
+  State<TickerTape> createState() => _TickerTapeState();
+}
+
+class _TickerTapeState extends State<TickerTape> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: widget.duration,
+    )..repeat();
+  }
+
+  @override
+  void didUpdateWidget(TickerTape oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.duration != widget.duration) {
+      _controller.duration = widget.duration;
+    }
+    if (oldWidget.text != widget.text) {
+      _controller
+        ..reset()
+        ..repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final displayText = '${widget.text}     ${widget.text}';
+        final textPainter = TextPainter(
+          text: TextSpan(text: displayText, style: widget.style),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        final textWidth = textPainter.width;
+        final containerWidth = constraints.maxWidth;
+
+        if (textWidth <= containerWidth) {
+          return Align(
+            alignment: Alignment.centerLeft,
+            child: Text(widget.text, style: widget.style),
+          );
+        }
+
+        final totalDistance = containerWidth + textWidth;
+
+        return ClipRect(
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              final dx = containerWidth - (totalDistance * _controller.value);
+              return Transform.translate(
+                offset: Offset(dx, 0),
+                child: child,
+              );
+            },
+            child: Text(displayText, style: widget.style),
+          ),
+        );
+      },
     );
   }
 }

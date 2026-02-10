@@ -228,6 +228,30 @@ class OrderProvider with ChangeNotifier {
     }
   }
 
+  // Update customer details
+  Future<void> updateCustomer(Customer customer) async {
+    _setLoading(true);
+    try {
+      await _customerService.updateCustomer(customer);
+    } catch (e) {
+      throw e;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Delete customer
+  Future<void> deleteCustomer(String customerId) async {
+    _setLoading(true);
+    try {
+      await _customerService.deleteCustomer(customerId);
+    } catch (e) {
+      throw e;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // INVOICE GENERATION METHODS
 
   // Generate PDF Invoice

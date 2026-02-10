@@ -7,6 +7,7 @@ class InventoryCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onSell;
 
   const InventoryCard({
     Key? key,
@@ -14,6 +15,7 @@ class InventoryCard extends StatelessWidget {
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
+    required this.onSell,
   }) : super(key: key);
 
   @override
@@ -182,6 +184,13 @@ class InventoryCard extends StatelessWidget {
   Widget _buildActionButtons() {
     return Row(
       children: [
+        IconButton(
+          icon: Icon(Icons.shopping_cart, size: 18),
+          onPressed: onSell,
+          color: AppColors.success,
+          padding: EdgeInsets.zero,
+          constraints: BoxConstraints(),
+        ),
         // Edit Button
         IconButton(
           icon: Icon(Icons.edit, size: 18),

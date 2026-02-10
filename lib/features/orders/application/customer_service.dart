@@ -47,6 +47,15 @@ class CustomerService {
     }
   }
 
+  // Delete customer
+  Future<void> deleteCustomer(String customerId) async {
+    try {
+      await _customersCollection.doc(customerId).delete();
+    } catch (e) {
+      throw 'Failed to delete customer: $e';
+    }
+  }
+
   // Update customer after order
   Future<void> updateCustomerAfterOrder(String customerId, double orderAmount) async {
     try {
