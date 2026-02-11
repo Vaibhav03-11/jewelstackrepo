@@ -113,6 +113,7 @@ class _DetailsPageState extends State<DetailsPage> {
     final user = authService.currentUser;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Jewel Stack',
@@ -300,7 +301,7 @@ class _DetailsPageState extends State<DetailsPage> {
         ),
       ),
       body: Container(
-        color: AppColors.lightBackground,
+        color: Theme.of(context).scaffoldBackgroundColor,
         child: Column(
           children: [
             Padding(
@@ -325,19 +326,19 @@ class _DetailsPageState extends State<DetailsPage> {
                 child: Row(
                   children: [
                     _buildPremiumChip(
-                      label: '🥇 Gold',
+                      label: ' Gold',
                       isSelected: _selectedCategory == 'Gold',
                       accentColor: AppColors.primaryGold,
                       onTap: () => setState(() => _selectedCategory = 'Gold'),
                     ),
                     _buildPremiumChip(
-                      label: '📿 Rudraksh',
+                      label: ' Rudraksh',
                       isSelected: _selectedCategory == 'Rudraksh',
                       accentColor: const Color(0xFF8B7355),
                       onTap: () => setState(() => _selectedCategory = 'Rudraksh'),
                     ),
                     _buildPremiumChip(
-                      label: '💎 Gemstones',
+                      label: ' Gemstones',
                       isSelected: _selectedCategory == 'Gemstones',
                       accentColor: const Color(0xFF6B46C1),
                       onTap: () => setState(() => _selectedCategory = 'Gemstones'),
