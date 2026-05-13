@@ -19,12 +19,25 @@ class _RegisterPageState extends State<RegisterPage> {
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _shopIdController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _agreeToTerms = false;
+  String? _selectedRole;
+
+  void _goToLogin() {
+    if (widget.onLoginPressed != null) {
+      widget.onLoginPressed!();
+      return;
+    }
+
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+  }
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
@@ -49,6 +62,8 @@ class _RegisterPageState extends State<RegisterPage> {
         phoneNumber: _phoneController.text.trim().isEmpty 
             ? null 
             : _phoneController.text.trim(),
+        role: _selectedRole!,
+        shopId: _selectedRole == 'staff' ? _shopIdController.text.trim() : null,
       );
       // Navigation will be handled by auth state listener in main.dart
     } catch (e) {
@@ -80,7 +95,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 // Header
                 SizedBox(height: 20),
                 GestureDetector(
-                  onTap: widget.onLoginPressed,
+                  onTap: _goToLogin,
                   child: Icon(
                     Icons.arrow_back,
                     color: AppColors.textPrimary,
@@ -128,16 +143,17 @@ class _RegisterPageState extends State<RegisterPage> {
 
                 // Email Field
                 CustomTextField(
-                  label: 'Email or Phone Number',
-                  hintText: 'Enter your email or phone number',
+                  label: 'Email',
+                  hintText: 'Enter your email',
                   keyboardType: TextInputType.emailAddress,
                   controller: _emailController,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your email or phone number';
+                      return 'Please enter your email';
                     }
-                    if (!value.contains('@') && !RegExp(r'^[0-9]+$').hasMatch(value)) {
-                      return 'Please enter a valid email or phone number';
+                    final email = value.trim();
+                    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+                      return 'Please enter a valid email address';
                     }
                     return null;
                   }, onChanged: (value) {  }, readOnly: false, onTap: () {  },
@@ -152,6 +168,65 @@ class _RegisterPageState extends State<RegisterPage> {
                   controller: _phoneController,
                   onChanged: (value) {  }, readOnly: false, onTap: () {  },
                 ),
+                SizedBox(height: 20),
+
+                DropdownButtonFormField<String>(
+                  value: _selectedRole,
+                  decoration: InputDecoration(
+                    labelText: 'Role',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.primaryGold),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.cardBackground,
+                  ),
+                  hint: Text('Select your role'),
+                  items: const [
+                    DropdownMenuItem(value: 'owner', child: Text('Owner')),
+                    DropdownMenuItem(value: 'staff', child: Text('Staff')),
+                  ],
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please select a role';
+                    }
+                    return null;
+                  },
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() {
+                      _selectedRole = value;
+                      if (_selectedRole != 'staff') {
+                        _shopIdController.clear();
+                      }
+                    });
+                  },
+                ),
+                if (_selectedRole == 'staff') ...[
+                  SizedBox(height: 20),
+                  CustomTextField(
+                    label: 'Shop ID',
+                    hintText: 'Enter owner shop ID (e.g., shop_ownerUid)',
+                    controller: _shopIdController,
+                    validator: (value) {
+                      if (_selectedRole == 'staff' && (value == null || value.trim().isEmpty)) {
+                        return 'Shop ID is required for staff account';
+                      }
+                      return null;
+                    },
+                    onChanged: (value) {},
+                    readOnly: false,
+                    onTap: () {},
+                  ),
+                ],
                 SizedBox(height: 20),
 
                 // Password Field
@@ -248,7 +323,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 // Login Link
                 Center(
                   child: GestureDetector(
-                    onTap: widget.onLoginPressed,
+                    onTap: _goToLogin,
                     child: RichText(
                       text: TextSpan(
                         text: 'Already have an account? ',
@@ -283,6 +358,7 @@ class _RegisterPageState extends State<RegisterPage> {
     _fullNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _shopIdController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();

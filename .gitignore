@@ -43,3 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Runtime dumps and local debug artifacts
+android/java_pid*.hprof
+build_errors*.txt
+build_log.txt
+build_output*.txt
+out.txt

@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:jewelstack/core/constants/colors.dart';
 import 'package:jewelstack/core/widgets/custom_textfield.dart';
+import 'package:jewelstack/core/widgets/shop_app_drawer.dart';
 import 'package:provider/provider.dart';
 import '../../application/order_provider.dart';
 import '../../domain/customer_model.dart';
+import 'customer_detail_page.dart';
 
 enum _CustomerAction { edit, delete }
 
 class CustomerListPage extends StatefulWidget {
-  const CustomerListPage({Key? key}) : super(key: key);
+  final bool readOnly;
+  final bool returnCustomerOnSelect;
+
+  const CustomerListPage({
+    Key? key,
+    this.readOnly = false,
+    this.returnCustomerOnSelect = false,
+  }) : super(key: key);
 
   @override
   _CustomerListPageState createState() => _CustomerListPageState();
@@ -21,7 +30,9 @@ class _CustomerListPageState extends State<CustomerListPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<OrderProvider>(context, listen: false).initialize();
+      final provider = Provider.of<OrderProvider>(context, listen: false);
+      provider.initialize();
+      provider.searchCustomers('');
     });
   }
 
@@ -29,6 +40,7 @@ class _CustomerListPageState extends State<CustomerListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.lightBackground,
+      drawer: const ShopAppDrawer(),
       appBar: AppBar(
         title: Text(
           'Customers',
@@ -52,7 +64,8 @@ class _CustomerListPageState extends State<CustomerListPage> {
                 hintText: 'Search by name or contact number',
                 controller: _searchController,
                 onChanged: (value) {
-                  Provider.of<OrderProvider>(context, listen: false).searchOrders(value);
+                  Provider.of<OrderProvider>(context, listen: false)
+                      .searchCustomers(value);
                 },
                 readOnly: false,
                 onTap: () {},
@@ -103,14 +116,16 @@ class _CustomerListPageState extends State<CustomerListPage> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showAddCustomerDialog(context);
-        },
-        backgroundColor: AppColors.primaryGold,
-        foregroundColor: AppColors.textLight,
-        child: Icon(Icons.person_add),
-      ),
+      floatingActionButton: widget.readOnly
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                _showAddCustomerDialog(context);
+              },
+              backgroundColor: AppColors.primaryGold,
+              foregroundColor: AppColors.textLight,
+              child: Icon(Icons.person_add),
+            ),
     );
   }
 
@@ -172,38 +187,42 @@ class _CustomerListPageState extends State<CustomerListPage> {
               ],
             ),
             SizedBox(width: 8),
-            PopupMenuButton<_CustomerAction>(
-              onSelected: (action) {
-                switch (action) {
-                  case _CustomerAction.edit:
-                    _showEditCustomerDialog(context, customer);
-                    break;
-                  case _CustomerAction.delete:
-                    _confirmDeleteCustomer(context, customer);
-                    break;
-                }
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem(
-                  value: _CustomerAction.edit,
-                  child: Text('Edit'),
-                ),
-                PopupMenuItem(
-                  value: _CustomerAction.delete,
-                  child: Text('Delete'),
-                ),
-              ],
-            ),
+            if (!widget.readOnly)
+              PopupMenuButton<_CustomerAction>(
+                onSelected: (action) {
+                  switch (action) {
+                    case _CustomerAction.edit:
+                      _showEditCustomerDialog(context, customer);
+                      break;
+                    case _CustomerAction.delete:
+                      _confirmDeleteCustomer(context, customer);
+                      break;
+                  }
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: _CustomerAction.edit,
+                    child: Text('Edit'),
+                  ),
+                  PopupMenuItem(
+                    value: _CustomerAction.delete,
+                    child: Text('Delete'),
+                  ),
+                ],
+              ),
           ],
         ),
         onTap: () {
-          // Navigator.pop(context, customer);
+          if (widget.returnCustomerOnSelect) {
+            Navigator.pop(context, customer);
+            return;
+          }
           Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CustomerDetailPage(customer: customer),
-          ),
-        );
+            context,
+            MaterialPageRoute(
+              builder: (context) => CustomerDetailPage(customer: customer),
+            ),
+          );
         },
       ),
     );
@@ -434,8 +453,10 @@ class _CustomerListPageState extends State<CustomerListPage> {
                 await Provider.of<OrderProvider>(context, listen: false).addCustomer(customer);
                 // Close the add-customer dialog
                 Navigator.pop(context);
-                // Pop the CustomerListPage and return the newly created customer to the caller
-                Navigator.pop(context, customer);
+                // Only return the new customer when this page is used as a picker.
+                if (widget.returnCustomerOnSelect) {
+                  Navigator.pop(this.context, customer);
+                }
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -477,184 +498,3 @@ class _CustomerListPageState extends State<CustomerListPage> {
   }
 }
 
-class CustomerDetailPage extends StatelessWidget {
-  final Customer customer;
-
-  const CustomerDetailPage({Key? key, required this.customer}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.lightBackground,
-      appBar: AppBar(
-        title: Text(
-          customer.name,
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: AppColors.primaryGold,
-        foregroundColor: AppColors.textLight,
-        elevation: 0,
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: AppColors.primaryGold.withOpacity(0.1),
-                    child: Icon(
-                      Icons.person,
-                      color: AppColors.primaryGold,
-                      size: 28,
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          customer.name,
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          customer.contactNumber,
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16),
-              if (customer.email != null && customer.email!.isNotEmpty) ...[
-                Text(
-                  'Email',
-                  style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(customer.email!),
-                SizedBox(height: 12),
-              ],
-              if (customer.address != null && customer.address!.isNotEmpty) ...[
-                Text(
-                  'Address',
-                  style: TextStyle(
-                    fontFamily: 'Montserrat',
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(customer.address!),
-                SizedBox(height: 12),
-              ],
-              Text(
-                'Stats',
-                style: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Card(
-                      elevation: 1,
-                      child: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Column(
-                          children: [
-                            Text(
-                              '${customer.totalOrders}',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text('Orders'),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Card(
-                      elevation: 1,
-                      child: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Column(
-                          children: [
-                            Text(
-                              '₹${customer.totalSpent.toStringAsFixed(0)}',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primaryGold,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text('Total Spent'),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Last Purchase',
-                style: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                _formatTimeAgo(customer.lastPurchase),
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatTimeAgo(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays > 30) {
-      return '${(difference.inDays / 30).floor()} months ago';
-    } else if (difference.inDays > 0) {
-      return '${difference.inDays} days ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hours ago';
-    } else {
-      return 'Just now';
-    }
-  }
-}

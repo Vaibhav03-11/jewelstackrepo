@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../auth/application/auth_service.dart';
 import '../../application/order_provider.dart';
 import '../../domain/order_model.dart' as order_model;
 import '../../../../core/constants/colors.dart';
+import '../../../../core/widgets/shop_app_drawer.dart';
 import '../../../../core/widgets/custom_textfield.dart';
 import '../widgets/order_reminder_widget.dart';
 import '../widgets/order_in_process_widget.dart';
@@ -11,7 +12,9 @@ import 'order_detail_page.dart';
 import 'create_order_page.dart';
 
 class OrderListPage extends StatefulWidget {
-  const OrderListPage({Key? key}) : super(key: key);
+  final bool readOnly;
+
+  const OrderListPage({Key? key, this.readOnly = false}) : super(key: key);
 
   @override
   _OrderListPageState createState() => _OrderListPageState();
@@ -21,19 +24,41 @@ class _OrderListPageState extends State<OrderListPage> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedFilter = 'All';
   bool _showDashboardWidgets = true;
+  bool _roleReadOnly = true;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<OrderProvider>(context, listen: false).initialize();
+      _resolveRoleReadOnly();
     });
   }
+
+  Future<void> _resolveRoleReadOnly() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final firebaseUser = authService.currentUser;
+    if (firebaseUser == null) {
+      if (mounted) {
+        setState(() => _roleReadOnly = true);
+      }
+      return;
+    }
+
+    final userModel = await authService.getUserData(firebaseUser.uid);
+    if (!mounted) return;
+    setState(() {
+      _roleReadOnly = userModel?.role == 'staff';
+    });
+  }
+
+  bool get _effectiveReadOnly => widget.readOnly || _roleReadOnly;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.lightBackground,
+      drawer: const ShopAppDrawer(),
       appBar: AppBar(
         title: Text(
           'Orders',
@@ -69,17 +94,19 @@ class _OrderListPageState extends State<OrderListPage> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => CreateOrderPage()),
-          );
-        },
-        backgroundColor: AppColors.primaryGold,
-        foregroundColor: AppColors.textLight,
-        child: Icon(Icons.add),
-      ),
+        floatingActionButton: _effectiveReadOnly
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => CreateOrderPage()),
+                );
+              },
+              backgroundColor: AppColors.primaryGold,
+              foregroundColor: AppColors.textLight,
+              child: Icon(Icons.add),
+            ),
     );
   }
 
@@ -140,8 +167,9 @@ class _OrderListPageState extends State<OrderListPage> {
   }
 
   Widget _buildDashboardWidgets() {
+    final provider = Provider.of<OrderProvider>(context, listen: false);
     return StreamBuilder(
-      stream: FirebaseFirestore.instance.collection("orders").snapshots(),
+      stream: provider.orderService.getOrders(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Padding(
@@ -163,16 +191,22 @@ class _OrderListPageState extends State<OrderListPage> {
           );
         }
 
-        final orders = snapshot.data ?? [];
-        final dueSoonOrders = [];
-        final inProcessOrders = [];
+        final orders = snapshot.data as List<order_model.Order>? ?? [];
+        final dueSoonOrders =
+          orders.where((order) => order.isDueSoon).toList();
+        final inProcessOrders = orders
+          .where((order) =>
+            order.status == order_model.OrderStatus.pending ||
+            order.status == order_model.OrderStatus.confirmed ||
+            order.status == order_model.OrderStatus.inProgress)
+          .toList();
 
         return Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Column(
             children: [
               OrderReminderWidget(
-                dueSoonOrders: [],
+                dueSoonOrders: dueSoonOrders,
                 onViewAll: () {
                   setState(() {
                     _selectedFilter = 'Due Soon';
@@ -181,7 +215,7 @@ class _OrderListPageState extends State<OrderListPage> {
               ),
               SizedBox(height: 16),
               OrderInProcessWidget(
-                inProcessOrders: [],
+                inProcessOrders: inProcessOrders,
                 onViewAll: () {
                   setState(() {
                     _selectedFilter = 'In Progress';
@@ -197,12 +231,10 @@ class _OrderListPageState extends State<OrderListPage> {
   }
 
   Widget _buildOrderListStream() {
+    final provider = Provider.of<OrderProvider>(context, listen: false);
     return Expanded(
-      child: StreamBuilder(
-        stream: FirebaseFirestore.instance
-            .collection('orders')
-            .orderBy('orderDate', descending: true)
-            .snapshots(),
+      child: StreamBuilder<List<order_model.Order>>(
+        stream: provider.orderService.getOrders(),
         builder: (context, snapshot) {
  
           // Handle loading state
@@ -255,17 +287,7 @@ class _OrderListPageState extends State<OrderListPage> {
               ),
             );
           }
-List<order_model.Order> allOrders=[];
-try {
-  
-          // Map Firestore documents to Order objects
-          allOrders = snapshot.data?.docs
-              .map((doc) => order_model.Order.fromMap(doc.data() as Map<String, dynamic>))
-              .toList() ?? [];
-                     print("Sameerana ${allOrders}");
-} catch (e) {
-  print("Sameerana S Error ${e.toString()}");
-}
+          final List<order_model.Order> allOrders = snapshot.data ?? [];
           
           // Apply search filter
           List<order_model.Order> filteredOrders = allOrders;
@@ -417,7 +439,7 @@ try {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => OrderDetailPage(order: order),
+              builder: (context) => OrderDetailPage(order: order, readOnly: _effectiveReadOnly),
             ),
           );
         },
@@ -431,7 +453,7 @@ try {
                 children: [
                   Expanded(
                     child: Text(
-                      'Order #${order.id.substring(order.id.length - 6)}', // Show last 6 chars
+                      'Order #${order.id.length > 6 ? order.id.substring(order.id.length - 6) : order.id}',
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 16,

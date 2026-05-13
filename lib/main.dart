@@ -14,7 +14,7 @@ import 'firebase_options.dart';
 import 'core/themes/app_theme.dart';
 import 'features/auth/application/auth_service.dart';
 import 'features/inventory/application/inventory_provider.dart';
-import 'features/dashboard/presentation/pages/main_dashboard.dart' as dashboard;
+import 'features/dashboard/presentation/pages/staff_dashboard.dart';
 import 'features/orders/application/order_provider.dart';
 
 void main() async {
@@ -62,12 +62,24 @@ class AuthWrapper extends StatelessWidget {
         }
 
         if (snapshot.hasData && snapshot.data != null) {
-          // User is logged in - navigate to main dashboard
-          return dashboard.MainDashboard();
+          return FutureBuilder(
+            future: authService.getUserData(snapshot.data!.uid),
+            builder: (context, userSnapshot) {
+              if (userSnapshot.connectionState == ConnectionState.waiting) {
+                return SplashScreen();
+              }
+
+              final user = userSnapshot.data;
+              if (user != null && user.role == 'staff') {
+                return const StaffDashboard();
+              }
+              return const OwnerDashboard();
+            },
+          );
         }
 
         // User is not logged in - show authentication flow
-        return LoginPage();
+        return AuthenticationFlow();
       },
     );
   }
@@ -108,16 +120,12 @@ class AuthenticationFlow extends StatefulWidget {
 }
 
 class _AuthenticationFlowState extends State<AuthenticationFlow> {
-  PageController _pageController = PageController();
-  int _currentPage = 0;
-  
+  int _authScreen = 0; // 0: login, 1: register, 2: forgot password
+
   void _navigateToPage(int page) {
-    _pageController.animateToPage(
-      page,
-      duration: Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-    setState(() => _currentPage = page);
+    setState(() {
+      _authScreen = page;
+    });
   }
 
   @override
@@ -133,26 +141,49 @@ class _AuthenticationFlowState extends State<AuthenticationFlow> {
         }
 
         if (snapshot.hasData && snapshot.data != null) {
-          // User is logged in - navigate to main dashboard
-          return dashboard.MainDashboard();
+          return FutureBuilder(
+            future: authService.getUserData(snapshot.data!.uid),
+            builder: (context, userSnapshot) {
+              if (userSnapshot.connectionState == ConnectionState.waiting) {
+                return SplashScreen();
+              }
+
+              final user = userSnapshot.data;
+              if (user != null && user.role == 'staff') {
+                return const StaffDashboard();
+              }
+              return const OwnerDashboard();
+            },
+          );
         }
 
-        return PageView(
-        controller: _pageController,
-        physics: NeverScrollableScrollPhysics(),
-        children: [
-          LoginPage(
-            onRegisterPressed: () => _navigateToPage(1),
-            onForgotPasswordPressed: () => _navigateToPage(2),
+        Widget authChild;
+        switch (_authScreen) {
+          case 1:
+            authChild = RegisterPage(
+              onLoginPressed: () => _navigateToPage(0),
+            );
+            break;
+          case 2:
+            authChild = ForgotPasswordPage(
+              onBackPressed: () => _navigateToPage(0),
+            );
+            break;
+          case 0:
+          default:
+            authChild = LoginPage(
+              onRegisterPressed: () => _navigateToPage(1),
+              onForgotPasswordPressed: () => _navigateToPage(2),
+            );
+        }
+
+        return AnimatedSwitcher(
+          duration: Duration(milliseconds: 220),
+          child: KeyedSubtree(
+            key: ValueKey<int>(_authScreen),
+            child: authChild,
           ),
-          RegisterPage(
-            onLoginPressed: () => _navigateToPage(0),
-          ),
-          ForgotPasswordPage(
-            onBackPressed: () => _navigateToPage(0),
-          ),
-        ],
-      );
+        );
       },)
        ,
     );
@@ -160,7 +191,6 @@ class _AuthenticationFlowState extends State<AuthenticationFlow> {
 
   @override
   void dispose() {
-    _pageController.dispose();
     super.dispose();
   }
 }

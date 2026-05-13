@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userRole() {
+      return userDoc().data.role;
+    }
+
+    function userShopId() {
+      return userDoc().data.shopId;
+    }
+
+    function canAccessShop(shopId) {
+      return isSignedIn() && userShopId() == shopId;
+    }
+
+    function isOwner(shopId) {
+      return canAccessShop(shopId) && userRole() == 'owner';
+    }
+
+    function isStaff(shopId) {
+      return canAccessShop(shopId) && userRole() == 'staff';
+    }
+
+    function validUserCreate(uid) {
+      return request.resource.data.uid == uid
+        && (
+          (request.resource.data.role == 'owner' && request.resource.data.shopId == ('shop_' + uid))
+          ||
+          (request.resource.data.role == 'staff' && request.resource.data.shopId is string && request.resource.data.shopId.size() > 0)
+        );
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && validUserCreate(uid);
+
+      // Role and shopId are immutable after account creation.
+      allow update: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.shopId == resource.data.shopId;
+
+      // Deletes disabled from client to avoid accidental auth/profile drift.
+      allow delete: if false;
+    }
+
+    match /shops/{shopId}/inventory/{docId} {
+      allow read: if isOwner(shopId) || isStaff(shopId);
+      allow create, update, delete: if isOwner(shopId);
+    }
+
+    match /shops/{shopId}/customers/{docId} {
+      allow read: if isOwner(shopId) || isStaff(shopId);
+      allow create, update, delete: if isOwner(shopId);
+    }
+
+    match /shops/{shopId}/orders/{docId} {
+      allow read: if isOwner(shopId) || isStaff(shopId);
+      allow create, update, delete: if isOwner(shopId);
+    }
+
+    // Nested order data (timeline notes, attachments, etc.)
+    match /shops/{shopId}/orders/{orderId}/{document=**} {
+      allow read: if isOwner(shopId) || isStaff(shopId);
+      allow write: if isOwner(shopId);
+    }
+
+    // Shop metadata document (for drawer/shop header info).
+    match /shops/{shopId} {
+      allow read: if isOwner(shopId) || isStaff(shopId);
+      allow create, update, delete: if isOwner(shopId);
+    }
+
+    // Global reference collections used by Details page.
+    match /golddetails/{docId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && userRole() == 'owner';
+    }
+
+    match /rudrakshdetails/{docId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && userRole() == 'owner';
+    }
+
+    match /gemstone/{docId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && userRole() == 'owner';
+    }
+
+    // For any other shop collections, only owner has access.
+    match /shops/{shopId}/{document=**} {
+      allow read, write: if isOwner(shopId);
+    }
+  }
+}

@@ -617,6 +617,9 @@ Widget _buildCustomerSection() {
 
     // Replace the _showCustomerSearchDialog method with this fixed version:
 void _showCustomerSearchDialog() {
+  final provider = Provider.of<OrderProvider>(context, listen: false);
+  provider.searchCustomers('');
+
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
@@ -635,8 +638,7 @@ void _showCustomerSearchDialog() {
                     border: OutlineInputBorder(),
                   ),
                   onChanged: (value) {
-                    // This will trigger customer search
-                    provider.searchOrders(value); // Using searchOrders for customer search
+                    provider.searchCustomers(value);
                   },
                 ),
                 SizedBox(height: 16),
@@ -692,6 +694,7 @@ void _showCustomerSearchDialog() {
                                   _selectedCustomer = customer;
                                   _customerSearchController.text = customer.name;
                                 });
+                                provider.searchCustomers('');
                                 Navigator.pop(context); // Close the dialog
                               },
                             );
@@ -705,7 +708,10 @@ void _showCustomerSearchDialog() {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            provider.searchCustomers('');
+            Navigator.pop(context);
+          },
           child: Text('Cancel'),
         ),
         TextButton(
@@ -713,7 +719,11 @@ void _showCustomerSearchDialog() {
             Navigator.pop(context); // Close this dialog first
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => CustomerListPage()),
+              MaterialPageRoute(
+                builder: (context) => const CustomerListPage(
+                  returnCustomerOnSelect: true,
+                ),
+              ),
             ).then((newCustomer) {
               // Handle if a new customer was created and selected
               if (newCustomer != null && newCustomer is Customer) {

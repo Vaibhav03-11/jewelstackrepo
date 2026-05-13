@@ -5,7 +5,7 @@ import '../../../../core/widgets/custom_textfield.dart';
 
 class ProgressUpdateDialog extends StatefulWidget {
   final Order order;
-  final Function(OrderStatus, String) onUpdate;
+  final Future<void> Function(OrderStatus, String, String?) onUpdate;
 
   const ProgressUpdateDialog({
     Key? key,
@@ -61,7 +61,12 @@ class _ProgressUpdateDialogState extends State<ProgressUpdateDialog> {
     setState(() => _isLoading = true);
 
     try {
-      await widget.onUpdate(_selectedStatus, _descriptionController.text);
+      final updatedBy = _updatedByController.text.trim();
+      await widget.onUpdate(
+        _selectedStatus,
+        _descriptionController.text.trim(),
+        updatedBy.isEmpty ? null : updatedBy,
+      );
       Navigator.pop(context);
       
       ScaffoldMessenger.of(context).showSnackBar(

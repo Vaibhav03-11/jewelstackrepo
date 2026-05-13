@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:jewelstack/features/inventory/presentation/pages/add_inventory_page.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/widgets/shop_app_drawer.dart';
+import '../../../auth/application/auth_service.dart';
 import '../../application/inventory_provider.dart';
 import '../../domain/inventory_item_model.dart';
 import '../widgets/inventory_card.dart';
@@ -8,7 +10,9 @@ import '../widgets/inventory_stats_card.dart';
 import '../../../../core/constants/colors.dart';
 
 class InventoryListPage extends StatefulWidget {
-  const InventoryListPage({Key? key}) : super(key: key);
+  final bool readOnly;
+
+  const InventoryListPage({Key? key, this.readOnly = false}) : super(key: key);
 
   @override
   _InventoryListPageState createState() => _InventoryListPageState();
@@ -18,19 +22,41 @@ class _InventoryListPageState extends State<InventoryListPage> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'All';
   _StockFilter _stockFilter = _StockFilter.all;
+  bool _roleReadOnly = true;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<InventoryProvider>(context, listen: false).initialize();
+      _resolveRoleReadOnly();
     });
   }
+
+  Future<void> _resolveRoleReadOnly() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final firebaseUser = authService.currentUser;
+    if (firebaseUser == null) {
+      if (mounted) {
+        setState(() => _roleReadOnly = true);
+      }
+      return;
+    }
+
+    final userModel = await authService.getUserData(firebaseUser.uid);
+    if (!mounted) return;
+    setState(() {
+      _roleReadOnly = userModel?.role == 'staff';
+    });
+  }
+
+  bool get _effectiveReadOnly => widget.readOnly || _roleReadOnly;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.lightBackground,
+      drawer: const ShopAppDrawer(),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
@@ -47,17 +73,19 @@ class _InventoryListPageState extends State<InventoryListPage> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => AddInventoryPage()),
-          );
-        },
-        backgroundColor: AppColors.primaryGold,
-        foregroundColor: AppColors.textLight,
-        child: Icon(Icons.add),
-      ),
+        floatingActionButton: _effectiveReadOnly
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AddInventoryPage()),
+                );
+              },
+              backgroundColor: AppColors.primaryGold,
+              foregroundColor: AppColors.textLight,
+              child: Icon(Icons.add),
+            ),
     );
   }
 
@@ -66,6 +94,12 @@ class _InventoryListPageState extends State<InventoryListPage> {
       padding: EdgeInsets.all(16),
       child: Row(
         children: [
+          Builder(
+            builder: (context) => IconButton(
+              icon: Icon(Icons.menu, color: AppColors.primaryGold),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          ),
           Text(
             'Inventory',
             style: TextStyle(
@@ -290,15 +324,21 @@ class _InventoryListPageState extends State<InventoryListPage> {
                   onTap: () {
                     _showItemDetails(context, item);
                   },
-                  onSell: () {
-                    _sellItem(context, item);
-                  },
-                  onEdit: () {
-                    _editItem(context, item);
-                  },
-                  onDelete: () {
-                    _deleteItem(context, item);
-                  },
+                  onSell: _effectiveReadOnly
+                      ? null
+                      : () {
+                          _sellItem(context, item);
+                        },
+                  onEdit: _effectiveReadOnly
+                      ? null
+                      : () {
+                          _editItem(context, item);
+                        },
+                  onDelete: _effectiveReadOnly
+                      ? null
+                      : () {
+                          _deleteItem(context, item);
+                        },
                 );
               },
               childCount: visibleItems.length,

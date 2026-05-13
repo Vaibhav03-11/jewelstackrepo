@@ -25,12 +25,22 @@ class OrderProvider with ChangeNotifier {
   List<Order> _inProcessOrders = [];
   bool _isLoading = false;
   String _searchQuery = '';
+  String _customerSearchQuery = '';
   double _liveGoldRate = 6350.0; // Default rate
 
   // Getters
   List<Order> get allOrders => _allOrders;
   List<Order> get filteredOrders => _filteredOrders;
-  List<Customer> get customers => _customers;
+  List<Customer> get customers {
+    if (_customerSearchQuery.isEmpty) {
+      return _customers;
+    }
+    final query = _customerSearchQuery.toLowerCase();
+    return _customers.where((customer) {
+      return customer.name.toLowerCase().contains(query) ||
+          customer.contactNumber.contains(_customerSearchQuery);
+    }).toList();
+  }
   List<Order> get dueSoonOrders => _dueSoonOrders;
   List<Order> get inProcessOrders => _inProcessOrders;
   bool get isLoading => _isLoading;
@@ -77,6 +87,11 @@ class OrderProvider with ChangeNotifier {
   void searchOrders(String query) {
     _searchQuery = query;
     _applyFilters();
+    notifyListeners();
+  }
+
+  void searchCustomers(String query) {
+    _customerSearchQuery = query.trim();
     notifyListeners();
   }
 
@@ -166,6 +181,24 @@ class OrderProvider with ChangeNotifier {
     }
   }
 
+  // Update progress percentage
+  Future<void> updateProgressPercentage({
+    required String orderId,
+    required double newProgressPercentage,
+  }) async {
+    _setLoading(true);
+    try {
+      await _orderService.updateProgressPercentage(
+        orderId: orderId,
+        newProgressPercentage: newProgressPercentage,
+      );
+    } catch (e) {
+      throw e;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // Get orders that need daily progress updates
   Stream<List<Order>> getOrdersNeedingProgressUpdates() {
     return _orderService.getOrdersNeedingProgressUpdates();
@@ -203,6 +236,30 @@ class OrderProvider with ChangeNotifier {
     _setLoading(true);
     try {
       await _orderService.updatePayment(orderId, advancePayment, balanceDue);
+    } catch (e) {
+      throw e;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Update only estimated delivery date
+  Future<void> updateEstimatedDeliveryDate(String orderId, DateTime estimatedDelivery) async {
+    _setLoading(true);
+    try {
+      await _orderService.updateEstimatedDeliveryDate(orderId, estimatedDelivery);
+    } catch (e) {
+      throw e;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Update only pending amount
+  Future<void> updatePendingAmount(String orderId, double balanceDue) async {
+    _setLoading(true);
+    try {
+      await _orderService.updatePendingAmount(orderId, balanceDue);
     } catch (e) {
       throw e;
     } finally {

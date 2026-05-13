@@ -4,6 +4,8 @@ import '../../../../core/constants/colors.dart';
 import '../../../../core/widgets/custom_textfield.dart';
 import '../widgets/auth_button.dart';
 import '../../application/auth_service.dart';
+import 'register_page.dart';
+import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   final VoidCallback? onRegisterPressed;
@@ -23,8 +25,42 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _shopIdController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  String _selectedRole = 'owner';
+
+  void _openRegister() {
+    if (widget.onRegisterPressed != null) {
+      widget.onRegisterPressed!();
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RegisterPage(
+          onLoginPressed: () => Navigator.pop(context),
+        ),
+      ),
+    );
+  }
+
+  void _openForgotPassword() {
+    if (widget.onForgotPasswordPressed != null) {
+      widget.onForgotPasswordPressed!();
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ForgotPasswordPage(
+          onBackPressed: () => Navigator.pop(context),
+        ),
+      ),
+    );
+  }
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -36,6 +72,8 @@ class _LoginPageState extends State<LoginPage> {
       await authService.signInWithEmail(
         email: _emailController.text.trim(),
         password: _passwordController.text,
+        expectedRole: _selectedRole,
+        shopId: _selectedRole == 'staff' ? _shopIdController.text.trim() : null,
       );
       // Navigation will be handled by auth state listener in main.dart
     } catch (e) {
@@ -130,13 +168,62 @@ class _LoginPageState extends State<LoginPage> {
                     },
                   ), onChanged: (value) {  }, readOnly: false, onTap: () {  },
                 ),
+                if (_selectedRole == 'staff') ...[
+                  SizedBox(height: 20),
+                  CustomTextField(
+                    label: 'Shop ID',
+                    hintText: 'Enter staff shop ID',
+                    controller: _shopIdController,
+                    validator: (value) {
+                      if (_selectedRole == 'staff' && (value == null || value.trim().isEmpty)) {
+                        return 'Shop ID is required for staff login';
+                      }
+                      return null;
+                    },
+                    onChanged: (value) {},
+                    readOnly: false,
+                    onTap: () {},
+                  ),
+                ],
+                SizedBox(height: 16),
+
+                DropdownButtonFormField<String>(
+                  value: _selectedRole,
+                  decoration: InputDecoration(
+                    labelText: 'Role',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.primaryGold),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.cardBackground,
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'owner', child: Text('Owner')),
+                    DropdownMenuItem(value: 'staff', child: Text('Staff')),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() {
+                      _selectedRole = value;
+                    });
+                  },
+                ),
                 SizedBox(height: 16),
 
                 // Forgot Password
                 Align(
                   alignment: Alignment.centerRight,
                   child: GestureDetector(
-                    onTap: widget.onForgotPasswordPressed,
+                    onTap: _openForgotPassword,
                     child: Text(
                       'Forgot Password?',
                       style: TextStyle(
@@ -180,7 +267,7 @@ class _LoginPageState extends State<LoginPage> {
                 // Create Account Button
                 AuthButton(
                   text: 'Create Account',
-                  onPressed: widget.onRegisterPressed!,
+                  onPressed: _openRegister,
                   isPrimary: false,
                 ),
               ],
@@ -195,6 +282,7 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _shopIdController.dispose();
     super.dispose();
   }
 }

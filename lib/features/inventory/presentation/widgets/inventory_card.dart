@@ -5,17 +5,17 @@ import '../../../../core/constants/colors.dart';
 class InventoryCard extends StatelessWidget {
   final InventoryItem item;
   final VoidCallback onTap;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final VoidCallback onSell;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  final VoidCallback? onSell;
 
   const InventoryCard({
     Key? key,
     required this.item,
     required this.onTap,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onSell,
+    this.onEdit,
+    this.onDelete,
+    this.onSell,
   }) : super(key: key);
 
   @override
@@ -182,6 +182,11 @@ class InventoryCard extends StatelessWidget {
   }
 
   Widget _buildActionButtons() {
+    final bool readOnly = onEdit == null && onDelete == null && onSell == null;
+    if (readOnly) {
+      return const SizedBox.shrink();
+    }
+
     return Row(
       children: [
         IconButton(

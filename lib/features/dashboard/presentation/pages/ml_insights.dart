@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,6 +18,7 @@ class MlInsightsPage extends StatefulWidget {
 class _MlInsightsPageState extends State<MlInsightsPage> {
   static const String _predictHost = 'ml-diamond-price-1.onrender.com';
   static const String _predictPath = '/predict';
+  static const Duration _requestTimeout = Duration(seconds: 35);
 
   final TextEditingController _caratController = TextEditingController();
   final TextEditingController _cutController = TextEditingController();
@@ -94,17 +96,7 @@ class _MlInsightsPageState extends State<MlInsightsPage> {
     }
 
     try {
-      final response = await http
-          .post(
-            Uri.https(_predictHost, _predictPath),
-            headers: const {
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode(payload),
-          )
-          .timeout(const Duration(seconds: 15));
-
-      print("--->${response.body}");
+      final response = await _postPredictionWithRetry(payload);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final formatted = _formatPredictionResult(response.body);
@@ -116,24 +108,30 @@ class _MlInsightsPageState extends State<MlInsightsPage> {
           }
         });
       } else {
+        final apiMessage = _extractApiErrorMessage(response.body);
         setState(() {
-          _errorText = 'Prediction failed: ${response.statusCode}';
+          _errorText = apiMessage == null
+              ? 'Prediction failed: ${response.statusCode}'
+              : 'Prediction failed: ${response.statusCode} - $apiMessage';
         });
       }
     } on http.ClientException catch (error) {
       setState(() {
-        _errorText = 'Prediction error: ${error.message}';
-        print(_errorText);
+        _errorText = 'Prediction error: ${error.message}. Please try again.';
       });
     } on TimeoutException {
       setState(() {
-        _errorText = 'Prediction error: Request timed out.';
-        print(_errorText);
+        _errorText =
+            'Prediction error: Request timed out. Server may be waking up, please retry.';
+      });
+    } on SocketException {
+      setState(() {
+        _errorText =
+            'Prediction error: Network unavailable. Check internet connection and retry.';
       });
     } catch (error) {
       setState(() {
         _errorText = 'Prediction error: $error';
-        print(_errorText);
       });
     } finally {
       if (mounted) {
@@ -142,6 +140,54 @@ class _MlInsightsPageState extends State<MlInsightsPage> {
         });
       }
     }
+  }
+
+  Future<http.Response> _postPredictionWithRetry(
+    Map<String, dynamic> payload,
+  ) async {
+    Future<http.Response> callApi() {
+      return http
+          .post(
+            Uri.https(_predictHost, _predictPath),
+            headers: const {
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(_requestTimeout);
+    }
+
+    try {
+      return await callApi();
+    } on TimeoutException {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      return callApi();
+    } on http.ClientException {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      return callApi();
+    } on SocketException {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      return callApi();
+    }
+  }
+
+  String? _extractApiErrorMessage(String responseBody) {
+    try {
+      final decoded = jsonDecode(responseBody);
+      if (decoded is Map<String, dynamic>) {
+        final message = decoded['message']?.toString().trim();
+        if (message != null && message.isNotEmpty) {
+          return message;
+        }
+        final error = decoded['error']?.toString().trim();
+        if (error != null && error.isNotEmpty) {
+          return error;
+        }
+      }
+    } catch (_) {
+      // Ignore non-JSON error bodies.
+    }
+    return null;
   }
 
   double? _parseDouble(String value) {
@@ -317,12 +363,12 @@ class _MlInsightsPageState extends State<MlInsightsPage> {
                             label: 'Clarity',
                             value: _selectedClarity,
                             items: const [
-                              'SII',
+                              'SI2',
                               'VS2',
-                              'VSI',
-                              'S12',
-                              'WS2',
-                              'WSI',
+                              'SI1',
+                              'VS1',
+                              'VVS2',
+                              'VVS1',
                               'IF',
                               'I1',
                             ],

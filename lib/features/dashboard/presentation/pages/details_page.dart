@@ -9,6 +9,8 @@ import 'package:intl/intl.dart' show NumberFormat;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../auth/application/auth_service.dart';
+import '../../../../core/widgets/shop_app_drawer.dart';
+import '../../../../core/widgets/metal_price_ticker.dart';
 
 // Color Palette
 class AppColors {
@@ -23,7 +25,7 @@ class AppColors {
   static const Color warning = Color(0xFFFF9800);
   static const Color error = Color(0xFFF44336);
   static const Color cardBackground = Color(0xFFFAF9F6);
-  static const Color borderColor = Color(0xFFE8E6E1);
+  static const Color borderColor = Color(0xFFE8E6E);
 }
 
 class DetailsPage extends StatefulWidget {
@@ -37,6 +39,7 @@ class _DetailsPageState extends State<DetailsPage> {
   static const String _goldApiKey = 'goldapi-3o7yqsmfwlwyiv-io';
   static const String _goldApiUrl = 'https://www.goldapi.io/api/XAU/INR';
   static const String _silverApiUrl = 'https://www.goldapi.io/api/XAG/INR';
+  static const Duration _tickerRefreshInterval = Duration(minutes: 30);
 
   String _selectedCategory = 'Gold';
   Future<MetalTickerData>? _tickerFuture;
@@ -52,7 +55,7 @@ class _DetailsPageState extends State<DetailsPage> {
   void initState() {
     super.initState();
     _tickerFuture = _fetchTickerData();
-    _tickerRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+    _tickerRefreshTimer = Timer.periodic(_tickerRefreshInterval, (_) {
       if (!mounted) {
         return;
       }
@@ -109,9 +112,6 @@ class _DetailsPageState extends State<DetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final user = authService.currentUser;
-
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -129,177 +129,11 @@ class _DetailsPageState extends State<DetailsPage> {
         elevation: 4,
         shadowColor: Colors.black.withOpacity(0.4),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(44),
-          child: PriceTickerBar(pricesFuture: _tickerFuture),
+          preferredSize: const Size.fromHeight(48),
+          child: const MetalPriceTicker(),
         ),
       ),
-      drawer: Drawer(
-        backgroundColor: AppColors.lightBackground,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppColors.lightBackground,
-                AppColors.cardBackground,
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              DrawerHeader(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.darkBackground,
-                      AppColors.secondaryGold,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryGold.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.primaryGold,
-                        width: 2,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.account_circle,
-                      size: 50,
-                      color: AppColors.primaryGold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    user?.email ?? 'Guest User',
-                    style: GoogleFonts.roboto(
-                      color: AppColors.cardBackground,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _buildProfileCard(context),
-            const SizedBox(height: 8),
-            MouseRegion(
-              onEnter: (_) {},
-              onExit: (_) {},
-              child: ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryGold.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppColors.primaryGold.withOpacity(0.3),
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.info_outline,
-                    color: AppColors.primaryGold,
-                    size: 20,
-                  ),
-                ),
-                title: Text(
-                  'About Us',
-                  style: GoogleFonts.roboto(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _showAboutDialog(context);
-                },
-              ),
-            ),
-            MouseRegion(
-              onEnter: (_) {},
-              onExit: (_) {},
-              child: ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.secondaryGold.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppColors.secondaryGold.withOpacity(0.3),
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.support_agent,
-                    color: AppColors.secondaryGold,
-                    size: 20,
-                  ),
-                ),
-                title: Text(
-                  'Contact Us',
-                  style: GoogleFonts.roboto(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _showContactSheet(context);
-                },
-              ),
-            ),
-            MouseRegion(
-              onEnter: (_) {},
-              onExit: (_) {},
-              child: ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.error.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppColors.error.withOpacity(0.3),
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.logout,
-                    color: AppColors.error,
-                    size: 20,
-                  ),
-                ),
-                title: Text(
-                  'Logout',
-                  style: GoogleFonts.roboto(
-                    color: AppColors.error,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
-                onTap: () async {
-                  await authService.signOut();
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
-                  }
-                },
-              ),
-            ),
-            ],
-          ),
-        ),
-      ),
+      drawer: const ShopAppDrawer(),
       body: Container(
         color: Theme.of(context).scaffoldBackgroundColor,
         child: Column(

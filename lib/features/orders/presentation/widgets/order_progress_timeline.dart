@@ -202,15 +202,15 @@ class OrderProgressTimeline extends StatelessWidget {
   }
 
   String _formatTime(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
+    final day = timestamp.day.toString().padLeft(2, '0');
+    final month = timestamp.month.toString().padLeft(2, '0');
+    final year = timestamp.year.toString();
+    final minute = timestamp.minute.toString().padLeft(2, '0');
 
-    if (difference.inDays > 0) {
-      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
-    } else {
-      return 'Just now';
-    }
+    final isPm = timestamp.hour >= 12;
+    final hour12 = timestamp.hour % 12 == 0 ? 12 : timestamp.hour % 12;
+    final period = isPm ? 'PM' : 'AM';
+
+    return '$day/$month/$year $hour12:$minute $period';
   }
 }

@@ -6,9 +6,15 @@ import '../../../orders/presentation/pages/order_list_page.dart';
 import '../../../orders/presentation/pages/customer_list_page.dart';
 import 'details_page.dart';
 import 'alloy_melting_calculator.dart';
+import 'gold_calculator_page.dart';
 import 'ml_insights.dart';
+import '../../../../core/widgets/metal_price_ticker.dart';
 
 class MainDashboard extends StatefulWidget {
+  final bool isReadOnly;
+
+  const MainDashboard({Key? key, this.isReadOnly = false}) : super(key: key);
+
   @override
   State<MainDashboard> createState() => _MainDashboardState();
 }
@@ -16,14 +22,25 @@ class MainDashboard extends StatefulWidget {
 class _MainDashboardState extends State<MainDashboard> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = [
-    DetailsPage(),
-    const AlloyMeltingCalculatorPage(),
-    InventoryListPage(),
-    CustomerListPage(),
-    OrderListPage(),
-    const MlInsightsPage(),
-  ];
+  List<Widget> get _pages {
+    if (widget.isReadOnly) {
+      return [
+        const InventoryListPage(readOnly: true),
+        const CustomerListPage(readOnly: true),
+        const OrderListPage(readOnly: true),
+        GoldCalculatorPage(),
+      ];
+    }
+
+    return [
+      DetailsPage(),
+      const AlloyMeltingCalculatorPage(),
+      const InventoryListPage(),
+      const CustomerListPage(),
+      const OrderListPage(),
+      const MlInsightsPage(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,32 +66,51 @@ class _MainDashboardState extends State<MainDashboard> {
           fontWeight: FontWeight.w500,
           fontSize: 12,
         ),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.info),
-            label: 'Details',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calculate),
-            label: 'Alloy',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory_2),
-            label: 'Inventory',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Customers',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Orders',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: 'ML Insights',
-          ),
-        ],
+        items: widget.isReadOnly
+            ? const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.inventory_2),
+                  label: 'Inventory',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.people),
+                  label: 'Customers',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.shopping_cart),
+                  label: 'Orders',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.calculate),
+                  label: 'Gold Calc',
+                ),
+              ]
+            : const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.info),
+                  label: 'Details',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.calculate),
+                  label: 'Alloy',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.inventory_2),
+                  label: 'Inventory',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.people),
+                  label: 'Customers',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.shopping_cart),
+                  label: 'Orders',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.analytics),
+                  label: 'ML Insights',
+                ),
+              ],
       ),
     );
   }
@@ -125,9 +161,13 @@ class _DashboardHome extends StatelessWidget {
           ),
         ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+      body: Column(
+        children: [
+          const MetalPriceTicker(),
+          Expanded(
+            child: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -258,6 +298,9 @@ class _DashboardHome extends StatelessWidget {
           ),
         ),
       ),
+            ),
+          ],
+        ),
     );
   }
 

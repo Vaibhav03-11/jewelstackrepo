@@ -1,57 +1,79 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:image_picker/image_picker.dart';
 import '../domain/inventory_item_model.dart';
 
 class InventoryService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final firebase_storage.FirebaseStorage _storage = firebase_storage.FirebaseStorage.instance;
 
-  // Collection reference
-  CollectionReference get _inventoryCollection =>
-      _firestore.collection('inventory');
+  Future<CollectionReference<Map<String, dynamic>>> _inventoryCollection() async {
+    final String shopId = await _getCurrentShopId();
+    return _firestore.collection('shops').doc(shopId).collection('inventory');
+  }
+
+  Future<String> _getCurrentShopId() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw 'User not authenticated';
+    }
+
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    final data = userDoc.data();
+    final shopId = (data?['shopId'] as String?)?.trim();
+    if (shopId == null || shopId.isEmpty) {
+      throw 'No shopId found for current user';
+    }
+    return shopId;
+  }
 
   // Get all inventory items
-  Stream<List<InventoryItem>> getInventoryItems() {
-    return _inventoryCollection
+  Stream<List<InventoryItem>> getInventoryItems() async* {
+    final collection = await _inventoryCollection();
+    yield* collection
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => InventoryItem.fromMap(doc.data() as Map<String, dynamic>))
+            .map((doc) => InventoryItem.fromMap(doc.data()))
             .toList());
   }
 
   // Get items by category
-  Stream<List<InventoryItem>> getItemsByCategory(String category) {
-    return _inventoryCollection
+  Stream<List<InventoryItem>> getItemsByCategory(String category) async* {
+    final collection = await _inventoryCollection();
+    yield* collection
         .where('category', isEqualTo: category)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => InventoryItem.fromMap(doc.data() as Map<String, dynamic>))
+            .map((doc) => InventoryItem.fromMap(doc.data()))
             .toList());
   }
 
   // Get low stock items (less than 5)
-  Stream<List<InventoryItem>> getLowStockItems() {
-    return _inventoryCollection
+  Stream<List<InventoryItem>> getLowStockItems() async* {
+    final collection = await _inventoryCollection();
+    yield* collection
         .where('stock', isLessThan: 5)
         .orderBy('stock')
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => InventoryItem.fromMap(doc.data() as Map<String, dynamic>))
+            .map((doc) => InventoryItem.fromMap(doc.data()))
             .toList());
   }
 
   // Get out of stock items
-  Stream<List<InventoryItem>> getOutOfStockItems() {
-    return _inventoryCollection
+  Stream<List<InventoryItem>> getOutOfStockItems() async* {
+    final collection = await _inventoryCollection();
+    yield* collection
         .where('stock', isEqualTo: 0)
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => InventoryItem.fromMap(doc.data() as Map<String, dynamic>))
+            .map((doc) => InventoryItem.fromMap(doc.data()))
             .toList());
   }
 
@@ -59,6 +81,7 @@ class InventoryService {
   
 Future<void> addInventoryItem(InventoryItem item, XFile? imageFile) async {
   try {
+    final collection = await _inventoryCollection();
     // Validate required fields
     if (item.name.isEmpty) throw 'Item name is required';
     if (item.weight <= 0) throw 'Weight must be greater than 0';
@@ -82,7 +105,7 @@ Future<void> addInventoryItem(InventoryItem item, XFile? imageFile) async {
     // Create item with image URL
     final itemWithImage = item.copyWith(imageUrl: imageUrl);
 
-    await _inventoryCollection.doc(item.id).set(itemWithImage.toMap());
+    await collection.doc(item.id).set(itemWithImage.toMap());
     
   } on FirebaseException catch (e) {
     throw 'Firebase error: ${e.message}';
@@ -95,6 +118,7 @@ Future<void> addInventoryItem(InventoryItem item, XFile? imageFile) async {
   // Update inventory item
   Future<void> updateInventoryItem(InventoryItem item, XFile? imageFile) async {
     try {
+      final collection = await _inventoryCollection();
       String? imageUrl = item.imageUrl;
       
       // Upload new image if provided
@@ -108,7 +132,7 @@ Future<void> addInventoryItem(InventoryItem item, XFile? imageFile) async {
         updatedAt: DateTime.now(),
       );
 
-      await _inventoryCollection.doc(item.id).update(updatedItem.toMap());
+      await collection.doc(item.id).update(updatedItem.toMap());
     } catch (e) {
       throw 'Failed to update item: $e';
     }
@@ -117,6 +141,7 @@ Future<void> addInventoryItem(InventoryItem item, XFile? imageFile) async {
   // Delete inventory item
   Future<void> deleteInventoryItem(String itemId) async {
     try {
+      final collection = await _inventoryCollection();
       // Delete image from storage if exists
       try {
         await _storage.ref('inventory/$itemId').delete();
@@ -124,7 +149,7 @@ Future<void> addInventoryItem(InventoryItem item, XFile? imageFile) async {
         // Image might not exist, continue with deletion
       }
 
-      await _inventoryCollection.doc(itemId).delete();
+      await collection.doc(itemId).delete();
     } catch (e) {
       throw 'Failed to delete item: $e';
     }
@@ -133,9 +158,10 @@ Future<void> addInventoryItem(InventoryItem item, XFile? imageFile) async {
   // Update stock quantity
   Future<void> updateStock(String itemId, int newStock) async {
   try {
+    final collection = await _inventoryCollection();
     if (newStock < 0) throw 'Stock cannot be negative';
     
-    await _inventoryCollection.doc(itemId).update({
+    await collection.doc(itemId).update({
       'stock': newStock,
       'updatedAt': DateTime.now().millisecondsSinceEpoch,
     });
@@ -166,12 +192,13 @@ Future<void> addInventoryItem(InventoryItem item, XFile? imageFile) async {
   }
 
   // Search inventory items
-  Stream<List<InventoryItem>> searchItems(String query) {
-    return _inventoryCollection
+  Stream<List<InventoryItem>> searchItems(String query) async* {
+    final collection = await _inventoryCollection();
+    yield* collection
         .orderBy('name')
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => InventoryItem.fromMap(doc.data() as Map<String, dynamic>))
+            .map((doc) => InventoryItem.fromMap(doc.data()))
             .where((item) =>
                 item.name.toLowerCase().contains(query.toLowerCase()) ||
                 item.category.toLowerCase().contains(query.toLowerCase()) ||

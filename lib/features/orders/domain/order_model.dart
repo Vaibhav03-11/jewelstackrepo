@@ -18,6 +18,7 @@ class Order {
   final bool isDueSoon;
   final bool isInProcess;
   final List<OrderProgress> progressUpdates; // NEW: Progress tracking
+  final double? maxProgressPercentage; // NEW: Manual progress slider
 
   Order({
     required this.id,
@@ -37,28 +38,42 @@ class Order {
     this.actualDelivery,
     this.description,
     required this.progressUpdates, 
+    this.maxProgressPercentage,
     
     this.isDueSoon=false, // NEW
     this.isInProcess=false, // NEW
   });
-  // Get current progress percentage
+  // Get current progress percentage (considers both status-based and manual progress)
   double get progressPercentage {
+    double statusProgress;
     switch (status) {
       case OrderStatus.pending:
-        return 0.2;
+        statusProgress = 0.2;
+        break;
       case OrderStatus.confirmed:
-        return 0.4;
+        statusProgress = 0.4;
+        break;
       case OrderStatus.inProgress:
-        return 0.6;
+        statusProgress = 0.6;
+        break;
       case OrderStatus.ready:
-        return 0.8;
+        statusProgress = 0.8;
+        break;
       case OrderStatus.delivered:
-        return 1.0;
+        statusProgress = 1.0;
+        break;
       case OrderStatus.cancelled:
-        return 0.0;
+        statusProgress = 0.0;
+        break;
       default:
-        return 0.0;
+        statusProgress = 0.0;
     }
+    
+    // Use the maximum of status-based progress and manual progress
+    if (maxProgressPercentage != null) {
+      return maxProgressPercentage! > statusProgress ? maxProgressPercentage! : statusProgress;
+    }
+    return statusProgress;
   }
 
   // Get latest progress update
@@ -87,6 +102,7 @@ class Order {
       'actualDelivery': actualDelivery?.millisecondsSinceEpoch,
       'description': description,
       'progressUpdates': progressUpdates.map((update) => update.toMap()).toList(), // NEW
+      'maxProgressPercentage': maxProgressPercentage,
     };
   }
 
@@ -117,7 +133,8 @@ class Order {
           : DateTime.now(),
       description: map['description']??"",
       progressUpdates: List<OrderProgress>.from( // NEW
-          (map['progressUpdates'] ?? []).map((x) => OrderProgress.fromMap(x))),
+          (map['progressUpdates'] ?? []).map((x) => OrderProgress.fromMap(x))),      
+      maxProgressPercentage: (map['maxProgressPercentage'] as num?)?.toDouble(),
     );
   }
 
@@ -151,6 +168,7 @@ class Order {
     DateTime? actualDelivery,
     String? description,
     List<OrderProgress>? progressUpdates,
+    double? maxProgressPercentage,
   }) {
     return Order(
       id: id ?? this.id,
@@ -170,6 +188,7 @@ class Order {
       actualDelivery: actualDelivery ?? this.actualDelivery,
       description: description ?? this.description,
       progressUpdates: progressUpdates ?? this.progressUpdates,
+      maxProgressPercentage: maxProgressPercentage ?? this.maxProgressPercentage,
     );
   }
 }
@@ -227,12 +246,12 @@ class OrderProgress {
 }
 
 enum OrderStatus {
-  pending,
-  confirmed,
-  inProgress,
-  ready,
-  delivered,
-  cancelled,
+  pending,        // Old - kept for backward compatibility
+  confirmed,      // Old - kept for backward compatibility
+  inProgress,     // Old - kept for backward compatibility
+  ready,          // Old - kept for backward compatibility
+  delivered,      // Old - kept for backward compatibility
+  cancelled,      // Old - kept for backward compatibility
 }
 
 // Added OrderItem model so Order.items has a valid type.

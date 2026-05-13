@@ -3,6 +3,8 @@ class UserModel {
   final String email;
   final String? phoneNumber;
   final String displayName;
+  final String role;
+  final String shopId;
   final DateTime createdAt;
   final DateTime? lastLogin;
 
@@ -11,6 +13,8 @@ class UserModel {
     required this.email,
     this.phoneNumber,
     required this.displayName,
+    required this.role,
+    required this.shopId,
     required this.createdAt,
     this.lastLogin,
   });
@@ -21,6 +25,8 @@ class UserModel {
       'email': email,
       'phoneNumber': phoneNumber,
       'displayName': displayName,
+      'role': role,
+      'shopId': shopId,
       'createdAt': createdAt.millisecondsSinceEpoch,
       'lastLogin': lastLogin?.millisecondsSinceEpoch,
     };
@@ -32,7 +38,11 @@ class UserModel {
       email: map['email'] ?? '',
       phoneNumber: map['phoneNumber'],
       displayName: map['displayName'] ?? '',
-      createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt']),
+      role: map['role'] ?? 'owner',
+      shopId: map['shopId'] ?? '',
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        (map['createdAt'] ?? DateTime.now().millisecondsSinceEpoch) as int,
+      ),
       lastLogin: map['lastLogin'] != null 
           ? DateTime.fromMillisecondsSinceEpoch(map['lastLogin'])
           : null,

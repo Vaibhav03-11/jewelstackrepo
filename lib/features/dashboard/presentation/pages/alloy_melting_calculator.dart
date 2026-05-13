@@ -65,6 +65,14 @@ class _AlloyMeltingCalculatorPageState
       _setError('Enter a valid current purity.');
       return;
     }
+    if (currentPurity > 24) {
+      _setError('Current purity cannot be greater than 24K.');
+      return;
+    }
+    if (targetPurity != null && targetPurity > 24) {
+      _setError('Target purity cannot be greater than 24K.');
+      return;
+    }
 
     final currentPercent = _normalizePurityPercent(currentPurity);
     final targetPercent = targetPurityPercentInput != null
